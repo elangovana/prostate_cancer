@@ -1,7 +1,7 @@
 ##########
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 2
+count = 10
 test_count = count + 3
 
 ####Download data#############
@@ -42,6 +42,10 @@ test_mh <- MedHistory_training[MedHistory_training$RPT %in% test_ct$RPT, ]
 test_pm <- PriorMed_training [PriorMed_training $RPT %in% test_ct$RPT, ]
 test_vs <- VitalSign_training [VitalSign_training$RPT %in% test_ct$RPT, ]
 
+source("./translate_data.R")
+translate_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                  test_ct, test_lv, test_lm, test_mh, test_pm, test_vs)
+train_ct$TARGET
 source("./alg_random_forest.R")
-alg_random_forest(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-test_ct, test_lv, test_lm, test_mh, test_pm, test_vs)
+# alg_random_forest(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+# test_ct, test_lv, test_lm, test_mh, test_pm, test_vs)
