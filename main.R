@@ -7,7 +7,7 @@ test_count = count + 3
 ####Download data#############
 
 CoreTable_synapse_entity <- file.path(input_data_train_dir,"CoreTable_training.csv") 
-CoreTable_training <- read.csv(CoreTable_synapse_entity, header=T, na.strings=".", as.is=c("RPT","AGEGRP"), colClasses=c(STOMACH="factor"))
+CoreTable_training <- read.csv(CoreTable_synapse_entity, row.names="RPT", header=T, na.strings=c(".",""), as.is=c("RPT","AGEGRP"), colClasses=c(STOMACH="factor"))
 
 LabValue_synapse_entity <- file.path(input_data_train_dir,"LabValue_training.csv") 
 LabValue_training <- read.csv(LabValue_synapse_entity, header=T, na.strings=".")
@@ -43,9 +43,9 @@ test_pm <- PriorMed_training [PriorMed_training $RPT %in% test_ct$RPT, ]
 test_vs <- VitalSign_training [VitalSign_training$RPT %in% test_ct$RPT, ]
 
 source("./translate_data.R")
-translate_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                  test_ct, test_lv, test_lm, test_mh, test_pm, test_vs)
-train_ct$TARGET
+train_ct <- clean_ct_data (train_ct)
+train_ct
+
 source("./alg_random_forest.R")
-# alg_random_forest(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-# test_ct, test_lv, test_lm, test_mh, test_pm, test_vs)
+alg_random_forest(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+ test_ct, test_lv, test_lm, test_mh, test_pm, test_vs)
