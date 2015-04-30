@@ -1,8 +1,8 @@
 ##########
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 10
-test_count = count + 3
+count = 1200
+test_count = 3
 
 ####Download data#############
 
@@ -44,7 +44,7 @@ test_vs <- VitalSign_training [VitalSign_training$RPT %in% test_ct$RPT, ]
 
 source("./translate_data.R")
 train_ct <- clean_ct_data (train_ct)
-train_ct
+test_ct <- clean_ct_data(test_ct)
 
 source("./alg_random_forest.R")
 alg_random_forest(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
