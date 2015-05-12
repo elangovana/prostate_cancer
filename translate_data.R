@@ -325,3 +325,28 @@ train_ct$MHVASC[is.na( train_ct$MHVASC)] <- "NO"
   return(train_ct)
   
 }
+
+
+clean_labvalue_data <- function(labvalue_data){
+  library(reshape2)
+  print("Before reshape")
+
+  #clean up data
+  #remove rows with NA labresult
+  labvalue_result <- labvalue_data[ !is.na(labvalue_data$LBSTRESN), ]
+  
+  #cast long to wide
+  labvalue_result <- dcast(labvalue_result,  DOMAIN + STUDYID + RPT ~ LBTESTCD + VISIT, value.var="LBSTRESN" )
+ 
+ 
+  #assign correct rownames and remove row name column
+  rownames(labvalue_result) <- labvalue_result$RPT  
+  labvalue_result <- subset(labvalue_result, select=-c(RPT))
+
+  #clean up column names to remove -, # white space, replaced with _
+  colnames(labvalue_result) <-gsub("-|\\s+|#","_", colnames(labvalue_result))
+  colnames(labvalue_result) <-gsub("_+","_", colnames(labvalue_result))
+
+  
+  return(labvalue_result)
+}
