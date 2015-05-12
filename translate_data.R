@@ -329,11 +329,27 @@ train_ct$MHVASC[is.na( train_ct$MHVASC)] <- "NO"
 
 clean_labvalue_data <- function(labvalue_data){
   library(reshape2)
-  print("Before reshape")
+  print("--- begin function clean_labvalue_data ----")
 
   #clean up data
   #remove rows with NA labresult
   labvalue_result <- labvalue_data[ !is.na(labvalue_data$LBSTRESN), ]
+  
+  #If lab code is NA, replace with lab test description  
+  levels(labvalue_result$LBTESTCD) <- c(levels(labvalue_result$LBTESTCD), as.character(unique(labvalue_result$LBTEST[is.na(labvalue_result$LBTESTCD)])))
+  labvalue_result$LBTESTCD[is.na(labvalue_result$LBTESTCD)] <- as.character(labvalue_result$LBTEST[is.na(labvalue_result$LBTESTCD)])
+  
+  
+  #remove duplicated lab results
+  duplicate_lab_results <- duplicated(labvalue_result[,  c("RPT", "LBTESTCD", "VISIT")])
+  duplicate_count <-length (duplicate_lab_results[duplicate_lab_results == TRUE])
+  if ( duplicate_count > 0){
+    warning(paste("Duplicate lab results found:", duplicate_count,  "These will be removed!!", sep = " " ))
+    print("Duplicate lab result record keys :")
+    print(labvalue_result[duplicate_lab_results, c("RPT", "LBTESTCD", "VISIT")])
+    labvalue_result <- labvalue_result[ !duplicate_lab_results, ]
+  }
+ 
   
   #cast long to wide
   labvalue_result <- dcast(labvalue_result,  DOMAIN + STUDYID + RPT ~ LBTESTCD + VISIT, value.var="LBSTRESN" )
@@ -344,9 +360,9 @@ clean_labvalue_data <- function(labvalue_data){
   labvalue_result <- subset(labvalue_result, select=-c(RPT))
 
   #clean up column names to remove -, # white space, replaced with _
-  colnames(labvalue_result) <-gsub("-|\\s+|#","_", colnames(labvalue_result))
+  colnames(labvalue_result) <-gsub("-|\\s+|#|\\(|\\)","_", colnames(labvalue_result))
   colnames(labvalue_result) <-gsub("_+","_", colnames(labvalue_result))
 
-  
+  print("--- end clean_labvalue_data ----")
   return(labvalue_result)
 }

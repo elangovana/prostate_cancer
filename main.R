@@ -1,8 +1,8 @@
 ##########
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 150
-test_count = 10
+count = 1200
+test_count = 350
 
 ####Download data#############
 

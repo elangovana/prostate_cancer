@@ -6,7 +6,7 @@ alg_random_forest <- function(train_ct, train_lv, train_lm, train_mh, train_pm, 
   subset_train_ct <- train_ct[ , c(1:3, 9:16, 21:130)]
   
 
-  ## Merge with other dataset information into one large wide dataset
+  ## Merge all med information from multiple datasets into one large wide dataset
   # merge train
   subset_train <- merge(subset_train_ct, train_lv, by=0)
   rownames(subset_train) <- subset_train$Row.names
@@ -36,17 +36,23 @@ alg_random_forest <- function(train_ct, train_lv, train_lm, train_mh, train_pm, 
   print("------------")
   print(str(subset_test,list.len = 999 ))
   
-  fit <- randomForest(LKADT_P ~ ., data=subset_train,  na.action=na.roughfix, ntree = 4000)
+  write.table(subset_test, file ="test.csv", sep=",")
+  write.table(subset_train, file ="train.csv", sep=",")
+  subset_train.roughfix <- na.roughfix(subset_train)
+  fit <- randomForest(LKADT_P ~ ., data=subset_train.roughfix , ntree = 8000)
   
  
   print(fit$predicted)
+ 
   
   rmse = sqrt( sum( (subset_train$LKADT_P - fit$predicted)^2 , na.rm = TRUE ) / nrow(subset_train) )
   
   print("----rmse---")
   print(rmse)
   
-  predictions = predict(fit, subset_test)
+  subset_test.roughfix <- na.roughfix(subset_test)
+  write.table(subset_test.roughfix, file ="testroughfix.csv", sep=",")
+  predictions = predict(fit, subset_test.roughfix )
   
   print(predictions)
   
