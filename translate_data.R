@@ -1,10 +1,28 @@
+convert_to_yes_no_factor <- function(dataset_df, col_name){
+  dataset_df[, c(col_name)] <- as.factor(dataset_df[, c(col_name)] )
+  levels(dataset_df[, c(col_name)] ) <- c("YES", "NO")
+  return (dataset_df)
+}
+
 clean_ct_data <- function(train_ct){
   
   
   #format age group
   train_ct$AGEGRP <- as.numeric(train_ct$AGEGRP)
   
- 
+  #age group 2
+  
+  #RACE_C
+  train_ct$RACE_C <- as.factor(train_ct$RACE_C)
+  train_ct$RACE_C[train_ct$RACE_C == 'Missing'] <- NA
+  levels(train_ct$RACE_C) <- c("Asian", "Black", "White", "Hispanic", "Other", "Missing")
+  
+  #RACE_C
+  train_ct$REGION_C <- as.factor(train_ct$REGION_C)
+  train_ct$REGION_C[train_ct$REGION_C == 'Missing'] <- NA
+  levels(train_ct$REGION_C) <- c("ASIA/PACIFIC", " WESTERN EUROPE", "EASTERN EUROPE", "SOUTH AMERICA", "NORTH AMERICA", "OTHER", "MISSING")
+  
+  
   #NON_TARGET
   levels(train_ct$NON_TARGET) <- c("YES", "NO")
   train_ct$NON_TARGET[is.na( train_ct$NON_TARGET)] <- "NO"
@@ -62,15 +80,18 @@ clean_ct_data <- function(train_ct){
   train_ct$PERITONEUM[is.na( train_ct$PERITONEUM)] <- "NO"
   
   #    COLON
+  train_ct$COLON <- as.factor(train_ct$COLON)
   levels(train_ct$COLON) <- c("YES", "NO")
   train_ct$COLON[is.na( train_ct$COLON)] <- "NO"
   
   #    HEAD_AND_NECK
+  train_ct$HEAD_AND_NECK <- as.factor(train_ct$HEAD_AND_NECK)
   levels(train_ct$HEAD_AND_NECK) <- c("YES", "NO")
   train_ct$HEAD_AND_NECK[is.na( train_ct$HEAD_AND_NECK)] <- "NO"
-  train_ct$HEAD_AND_NECK <- as.factor(train_ct$HEAD_AND_NECK)
+
   
   #    SOFT_TISSUE
+  train_ct$SOFT_TISSUE <- as.factor(train_ct$SOFT_TISSUE)
   levels(train_ct$SOFT_TISSUE) <- c("YES", "NO")
   train_ct$SOFT_TISSUE[is.na( train_ct$SOFT_TISSUE)] <- "NO"
   
@@ -79,16 +100,19 @@ clean_ct_data <- function(train_ct){
   train_ct$STOMACH[is.na( train_ct$STOMACH)] <- "NO"
   
   #    PANCREAS
+  train_ct$PANCREAS  <- as.factor(train_ct$PANCREAS)
   levels(train_ct$PANCREAS) <- c("YES", "NO")
   train_ct$PANCREAS[is.na( train_ct$PANCREAS)] <- "NO"
-  train_ct$PANCREAS  <- as.factor(train_ct$PANCREAS)
+  
   
   #    THYROID
+  train_ct$THYROID  <- as.factor(train_ct$THYROID)
   levels(train_ct$THYROID) <- c("YES", "NO")
   train_ct$THYROID[is.na( train_ct$THYROID)] <- "NO"
-  train_ct$THYROID  <- as.factor(train_ct$THYROID)
+ 
   
   #    ABDOMINAL
+  train_ct$ABDOMINAL  <- as.factor(train_ct$ABDOMINAL)
   levels(train_ct$ABDOMINAL) <- c("YES", "NO")
   train_ct$ABDOMINAL[is.na( train_ct$ABDOMINAL)] <- "NO"
   
@@ -167,10 +191,12 @@ levels(train_ct$ESTROGENS) <- c("YES", "NO")
 train_ct$ESTROGENS[is.na( train_ct$ESTROGENS)] <- "NO"
 
 #   ANTI_ESTROGENS
+train_ct$ANTI_ESTROGENS <- as.factor(train_ct$ANTI_ESTROGENS)
 levels(train_ct$ANTI_ESTROGENS) <- c("YES", "NO")
 train_ct$ANTI_ESTROGENS[is.na( train_ct$ANTI_ESTROGENS)] <- "NO"
 
 #   ARTTHROM
+train_ct$ARTTHROM <- as.factor(train_ct$ARTTHROM)
 levels(train_ct$ARTTHROM) <- c("YES", "NO")
 train_ct$ARTTHROM[is.na( train_ct$ARTTHROM)] <- "NO"
 
@@ -195,6 +221,7 @@ levels(train_ct$GASTREFL) <- c("YES", "NO")
 train_ct$GASTREFL[is.na( train_ct$GASTREFL)] <- "NO"
 
 #   GIBLEED
+train_ct$GIBLEED <- as.factor(train_ct$GIBLEED)
 levels(train_ct$GIBLEED) <- c("YES", "NO")
 train_ct$GIBLEED[is.na( train_ct$GIBLEED)] <- "NO"
 
@@ -363,6 +390,8 @@ clean_labvalue_data <- function(labvalue_data){
   colnames(labvalue_result) <-gsub("-|\\s+|#|\\(|\\)","_", colnames(labvalue_result))
   colnames(labvalue_result) <-gsub("_+","_", colnames(labvalue_result))
 
+  
+  
   print("--- end clean_labvalue_data ----")
   return(labvalue_result)
 }
