@@ -4,6 +4,17 @@ convert_to_yes_no_factor <- function(dataset_df, col_name){
   return (dataset_df)
 }
 
+clean_labels <- function (train_ct){
+  #Death
+  train_ct$DEATH <- as.factor(train_ct$DEATH)
+  levels(train_ct$DEATH) <- c("YES", "NO")
+  train_ct$DEATH[is.na( train_ct$DEATH)] <- "NO"   
+  
+  
+  return(train_ct)
+}
+
+
 clean_ct_data <- function(train_ct){
   
   
@@ -379,7 +390,7 @@ clean_labvalue_data <- function(labvalue_data){
  
   
   #cast long to wide
-  labvalue_result <- dcast(labvalue_result,  DOMAIN + STUDYID + RPT ~ LBTESTCD + VISIT, value.var="LBSTRESN" )
+  labvalue_result <- dcast(labvalue_result,  DOMAIN + STUDYID + RPT ~ LBTESTCD, value.var="LBSTRESN" , fun.aggregate = mean)
  
  
   #assign correct rownames and remove row name column

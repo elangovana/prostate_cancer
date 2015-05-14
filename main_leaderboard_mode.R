@@ -1,8 +1,9 @@
 ##########
 input_data_dir = "./input_dat"
+out_dir = "./out_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
-count = 10
+count = 0
 ####Download Train data#############
 
 CoreTable_synapse_entity <- file.path(input_data_train_dir,"CoreTable_training.csv") 
@@ -76,5 +77,5 @@ test_vs <- VitalSign_test [VitalSign_test$RPT %in% test_ct$RPT, ]
 
 source("./ml_pipeline.R")
 ml_pipeline(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-            test_ct, test_lv, test_lm, test_mh, test_pm, test_vs)
+            test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
 

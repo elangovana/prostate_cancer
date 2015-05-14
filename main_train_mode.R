@@ -1,7 +1,8 @@
 ##########
 input_data_dir = "./input_dat"
+out_dir ="./outdat_trainmode"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 100
+count = 500
 test_count = 5
 
 ####Download data#############
@@ -45,5 +46,5 @@ test_vs <- VitalSign_training [VitalSign_training$RPT %in% test_ct$RPT, ]
 
 source("./ml_pipeline.R")
 ml_pipeline(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-  test_ct, test_lv, test_lm, test_mh, test_pm, test_vs)
+  test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
 
