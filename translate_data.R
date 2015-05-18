@@ -17,7 +17,7 @@ clean_labels <- function (train_ct){
 
 clean_ct_data <- function(train_ct){
   
-  
+  print(head(rownames(train_ct)))
   #format age group
   train_ct$AGEGRP <- as.numeric(train_ct$AGEGRP)
   
@@ -379,30 +379,55 @@ clean_labvalue_data <- function(labvalue_data){
   
   
   #remove duplicated lab results
-  duplicate_lab_results <- duplicated(labvalue_result[,  c("RPT", "LBTESTCD", "VISIT")])
-  duplicate_count <-length (duplicate_lab_results[duplicate_lab_results == TRUE])
-  if ( duplicate_count > 0){
-    warning(paste("Duplicate lab results found:", duplicate_count,  "These will be removed!!", sep = " " ))
-    print("Duplicate lab result record keys :")
-    print(labvalue_result[duplicate_lab_results, c("RPT", "LBTESTCD", "VISIT")])
-    labvalue_result <- labvalue_result[ !duplicate_lab_results, ]
-  }
- 
-  
+#   duplicate_lab_results <- duplicated(labvalue_result[,  c("RPT", "LBTESTCD", "VISIT")])
+#   duplicate_count <-length (duplicate_lab_results[duplicate_lab_results == TRUE])
+#   if ( duplicate_count > 0){
+#     warning(paste("Duplicate lab results found:", duplicate_count,  "These will be removed!!", sep = " " ))
+#     print("Duplicate lab result record keys :")
+#     print(labvalue_result[duplicate_lab_results, c("RPT", "LBTESTCD", "VISIT")])
+#     labvalue_result <- labvalue_result[ !duplicate_lab_results, ]
+#   }
+   
   #cast long to wide
   labvalue_result <- dcast(labvalue_result,  DOMAIN + STUDYID + RPT ~ LBTESTCD, value.var="LBSTRESN" , fun.aggregate = mean)
- 
- 
+  
   #assign correct rownames and remove row name column
   rownames(labvalue_result) <- labvalue_result$RPT  
   labvalue_result <- subset(labvalue_result, select=-c(RPT))
 
   #clean up column names to remove -, # white space, replaced with _
   colnames(labvalue_result) <-gsub("-|\\s+|#|\\(|\\)","_", colnames(labvalue_result))
-  colnames(labvalue_result) <-gsub("_+","_", colnames(labvalue_result))
-
-  
+  colnames(labvalue_result) <-gsub("_+","_", colnames(labvalue_result))  
   
   print("--- end clean_labvalue_data ----")
+  return(labvalue_result)
+}
+
+
+clean_lesionmeasure_data <- function(labmeasure_data){
+  library(reshape2)
+  print("--- begin function clean_labmeasure_data ----")
+  print(head(labmeasure_data))
+  
+  if (nrow(labmeasure_data) == 0){
+    warning("Lab measure data frame empty. Hence lab measure values will not be used")
+    return (labmeasure_data)
+  }
+  
+  #cast long to wide
+  labvalue_result <- dcast(labmeasure_data,  DOMAIN + STUDYID + RPT ~ LSTEST + LSLOC, value.var="LSSTRESN" , fun.aggregate = mean)
+  
+  dcast(labmeasure_data,  DOMAIN + STUDYID + RPT ~ LSTEST, value.var="LSSTRESN" , fun.aggregate = mean)
+  
+  #assign correct rownames and remove row name column
+  rownames(labvalue_result) <- labvalue_result$RPT  
+  labvalue_result <- subset(labvalue_result, select=-c(RPT))
+  
+  #clean up column names to remove -, # white space, replaced with _
+  colnames(labvalue_result) <-gsub("-|\\s+|#|\\(|\\)","_", colnames(labvalue_result))
+  colnames(labvalue_result) <-gsub("_+","_", colnames(labvalue_result))  
+  
+  print(head(labvalue_result))
+  print("--- end clean_labmeasure_data ----")
   return(labvalue_result)
 }

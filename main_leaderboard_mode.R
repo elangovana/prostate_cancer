@@ -51,26 +51,21 @@ VitalSign_test <- read.csv(VitalSign_synapse_entity, header=T, na.strings=".")
 ## if count > 0, work only on a subset of training data
 if (count > 0) {
   train_ct <- CoreTable_training[c(1:count), ]
-  train_lv <- LabValue_training[LabValue_training$RPT %in% rownames(train_ct), ]
-  train_lm <- LesionMeasure_training[LesionMeasure_training$RPT %in% train_ct$RPT, ]
-  train_mh <- MedHistory_training[MedHistory_training$RPT %in% train_ct$RPT, ]
-  train_pm <- PriorMed_training [PriorMed_training $RPT %in% train_ct$RPT, ]
-  train_vs <- VitalSign_training [VitalSign_training$RPT %in% train_ct$RPT, ]
 } else {
   train_ct <- CoreTable_training
-  train_lv <- LabValue_training[LabValue_training$RPT %in% rownames(train_ct), ]
-  train_lm <- LesionMeasure_training[LesionMeasure_training$RPT %in% train_ct$RPT, ]
-  train_mh <- MedHistory_training[MedHistory_training$RPT %in% train_ct$RPT, ]
-  train_pm <- PriorMed_training [PriorMed_training $RPT %in% train_ct$RPT, ]
-  train_vs <- VitalSign_training [VitalSign_training$RPT %in% train_ct$RPT, ]
 }
+train_lv <- LabValue_training[LabValue_training$RPT %in% rownames(train_ct), ]
+train_lm <- LesionMeasure_training[LesionMeasure_training$RPT %in% rownames(train_ct), ]
+train_mh <- MedHistory_training[MedHistory_training$RPT %in% rownames(train_ct), ]
+train_pm <- PriorMed_training [PriorMed_training $RPT %in% rownames(train_ct), ]
+train_vs <- VitalSign_training [VitalSign_training$RPT %in% rownames(train_ct), ]
 
 test_ct <- CoreTable_test
 test_lv <- LabValue_test[LabValue_test$RPT %in%  rownames(test_ct), ]
-test_lm <- LesionMeasure_test[LesionMeasure_test$RPT %in% test_ct$RPT, ]
-test_mh <- MedHistory_test[MedHistory_test$RPT %in% test_ct$RPT, ]
-test_pm <- PriorMed_test[PriorMed_test$RPT %in% test_ct$RPT, ]
-test_vs <- VitalSign_test [VitalSign_test$RPT %in% test_ct$RPT, ]
+test_lm <- LesionMeasure_test[LesionMeasure_test$RPT %in% rownames(test_ct), ]
+test_mh <- MedHistory_test[MedHistory_test$RPT %in% rownames(test_ct), ]
+test_pm <- PriorMed_test[PriorMed_test$RPT %in% rownames(test_ct), ]
+test_vs <- VitalSign_test [VitalSign_test$RPT %in% rownames(test_ct), ]
 
 
 

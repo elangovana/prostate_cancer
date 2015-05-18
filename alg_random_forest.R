@@ -1,3 +1,18 @@
+merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
+  ## Merge all med information from multiple datasets into one large wide dataset
+  # merge train
+  df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  #merge Lesion
+  df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c("", ".lm" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+  
+  return(df_subset_merged)
+}
+
 predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
                               test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
   library("randomForest")
@@ -14,17 +29,12 @@ predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm,
   print("------test_lv------")
   print(str(test_lv,list.len = 999 ))
   
-  ## Merge all med information from multiple datasets into one large wide dataset
-  # merge train
-  subset_train <- merge(subset_train_ct, train_lv, by=0)
-  rownames(subset_train) <- subset_train$Row.names
-  subset_train <- subset(subset_train, select=-c(Row.names))
+  subset_train <- merge_all_data(subset_train_ct, train_lv, train_lm, train_mh, train_pm, train_vs)
   #merge test, remove domain study columns as they are duplicates
   subset_test <- test_ct[, !colnames(test_ct ) %in% c("DOMAIN" , "STUDYID")]
-  subset_test <- merge(subset_test, test_lv, by=0)
-  rownames(subset_test) <- subset_test$Row.names
-  subset_test <- subset(subset_test, select=-c(Row.names))
-  
+  subset_test <- merge_all_data(subset_test, test_lv, test_lm, test_mh, test_pm, test_vs)
+ 
+ 
   
   #remove columns with all NA
   subset_train <- subset_train[,colSums(is.na(subset_train))<nrow(subset_train)]
@@ -76,14 +86,11 @@ predict_death <- function(train_ct, train_lv, train_lm, train_mh, train_pm, trai
                               
   ## Merge all med information from multiple datasets into one large wide dataset
   # merge train
-  subset_train <- merge(subset_train_ct, train_lv, by=0)
-  rownames(subset_train) <- subset_train$Row.names
-  subset_train <- subset(subset_train, select=-c(Row.names))
+  subset_train <- merge_all_data(subset_train_ct, train_lv, train_lm, train_mh, train_pm, train_vs)
   #merge test, remove domain study columns as they are duplicates
   subset_test <- test_ct[, !colnames(test_ct ) %in% c("DOMAIN" , "STUDYID")]
-  subset_test <- merge(subset_test, test_lv, by=0)
-  rownames(subset_test) <- subset_test$Row.names
-  subset_test <- subset(subset_test, select=-c(Row.names))
+  subset_test <- merge_all_data(subset_test, test_lv, test_lm, test_mh, test_pm, test_vs)
+  
   
   
   #remove columns with all NA
