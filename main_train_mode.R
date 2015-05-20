@@ -2,8 +2,8 @@
 input_data_dir = "./input_dat"
 out_dir ="./outdat_trainmode"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 50
-test_count = 5
+count = 10
+test_count = 3
 
 ####Download data#############
 

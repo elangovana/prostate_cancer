@@ -55,7 +55,9 @@ predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm,
   
   #run RF, use rough fix for missing values
   subset_train.roughfix <- na.roughfix(subset_train)
-  fit <- randomForest(LKADT_P ~ ., subset_train.roughfix , ntree = 8000) 
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% c("LKADT_P")] , y=subset_train.roughfix$LKADT_P, ntree = 8000,  importance=TRUE)
+  
+  write.csv( importance(fit) , file=file.path(outdir, "timetolive_importanceFit.csv"))  
   rmse = sqrt( sum( (subset_train$LKADT_P - fit$predicted)^2 , na.rm = TRUE ) / nrow(subset_train) )  
   print(paste ("RMSE:", rmse, sep=" "))
   

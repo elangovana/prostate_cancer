@@ -4,11 +4,16 @@ convert_to_yes_no_factor <- function(dataset_df, col_name){
   return (dataset_df)
 }
 
+clean_names <- function(cols){
+ result <- gsub("-|\\s+|#|\\(|\\)|\\/","_", cols)
+ result <- gsub("_+","_", result)  
+ return (result)
+}
 clean_labels <- function (train_ct){
   #Death
   train_ct$DEATH <- as.factor(train_ct$DEATH)
-  levels(train_ct$DEATH) <- c("YES", "NO")
-  train_ct$DEATH[is.na( train_ct$DEATH)] <- "NO"   
+  levels(train_ct$DEATH) <- c("YES", "CENSORED")
+  train_ct$DEATH[is.na( train_ct$DEATH)] <- "CENSORED"   
   
   
   return(train_ct)
@@ -396,8 +401,8 @@ clean_labvalue_data <- function(labvalue_data){
   labvalue_result <- subset(labvalue_result, select=-c(RPT))
 
   #clean up column names to remove -, # white space, replaced with _
-  colnames(labvalue_result) <-gsub("-|\\s+|#|\\(|\\)","_", colnames(labvalue_result))
-  colnames(labvalue_result) <-gsub("_+","_", colnames(labvalue_result))  
+
+  colnames(labvalue_result) <-clean_names(colnames(labvalue_result))  
   
   print("--- end clean_labvalue_data ----")
   return(labvalue_result)
@@ -424,8 +429,8 @@ clean_lesionmeasure_data <- function(labmeasure_data){
   labvalue_result <- subset(labvalue_result, select=-c(RPT))
   
   #clean up column names to remove -, # white space, replaced with _
-  colnames(labvalue_result) <-gsub("-|\\s+|#|\\(|\\)","_", colnames(labvalue_result))
-  colnames(labvalue_result) <-gsub("_+","_", colnames(labvalue_result))  
+  colnames(labvalue_result) <-clean_names( colnames(labvalue_result))
+
   
   print(head(labvalue_result))
   print("--- end clean_labmeasure_data ----")
