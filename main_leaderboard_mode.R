@@ -3,7 +3,7 @@ input_data_dir = "./input_dat"
 out_dir = "./out_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
-count = 0
+count = 50
 ####Download Train data#############
 
 CoreTable_synapse_entity <- file.path(input_data_train_dir,"CoreTable_training.csv") 

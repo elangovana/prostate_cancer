@@ -2,8 +2,8 @@
 input_data_dir = "./input_dat"
 out_dir ="./outdat_trainmode"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 10
-test_count = 3
+count = 1200
+test_count = 400
 
 ####Download data#############
 
@@ -48,6 +48,4 @@ source("./ml_pipeline.R")
 df_predicted <- ml_pipeline(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
   test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
 
-head(df_predicted)
-str(df_predicted)
 write.csv(merge(test_ct, df_predicted, by=0, all=TRUE, suffixes= c("ct", "pred" )), file=file.path(out_dir, "trainmode_test_actual_vsp_red.csv"))

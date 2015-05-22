@@ -13,12 +13,14 @@ merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
   return(df_subset_merged)
 }
 
+
 predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
                               test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
   library("randomForest")
   print("----begin function predict_timetolive---")
   #remove other labels, except for the label LKADT_P that is predicted, from the train set  
-  subset_train_ct <- train_ct[ , !colnames(train_ct ) %in% c( "DEATH", "DISCONT",  "ENDTRS_C",	"ENTRT_PC")]
+  subset_train_ct <- train_ct
+ 
   
   print("---subset_train_ct---------")
   print(str(subset_train_ct,list.len = 999 ))
@@ -44,7 +46,7 @@ predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm,
   commonCols <- Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
   commonCols  <- commonCols[!commonCols %in% c("DOMAIN", "STUDYID")]
   #commonCols <- commonCols[1:6]
-  subset_train <- subset_train[, Reduce(union, commonCols, c("LKADT_P"))]
+  subset_train <- subset_train[, Reduce(union, commonCols, c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC"))]
   subset_test <- subset_test[, commonCols]
   
   
@@ -55,7 +57,7 @@ predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm,
   
   #run RF, use rough fix for missing values
   subset_train.roughfix <- na.roughfix(subset_train)
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% c("LKADT_P")] , y=subset_train.roughfix$LKADT_P, ntree = 8000,  importance=TRUE)
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC")] , y=subset_train.roughfix$LKADT_P, ntree = 8000,  importance=TRUE)
   
   write.csv( importance(fit) , file=file.path(outdir, "timetolive_importanceFit.csv"))  
   rmse = sqrt( sum( (subset_train$LKADT_P - fit$predicted)^2 , na.rm = TRUE ) / nrow(subset_train) )  
@@ -73,7 +75,7 @@ predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm,
   
   ##Return model
   print("----end function predict_timetolive---")
-  return(predictions)
+  return(list(predictions=predictions, fit=fit, train=subset_train.roughfix, test=subset_test.roughfix ))
   
 }
 
@@ -83,8 +85,8 @@ predict_death <- function(train_ct, train_lv, train_lm, train_mh, train_pm, trai
   print("----Begin function predict_death---")
   library("randomForest")
 
-  #remove other labels, except for the label LKADT_P that is predicted, from the train set  
-   subset_train_ct <- train_ct[ , !colnames(train_ct ) %in% c("LKADT_P" ,  "DISCONT",  "ENDTRS_C",  "ENTRT_PC")]
+   
+   subset_train_ct <- train_ct
                               
   ## Merge all med information from multiple datasets into one large wide dataset
   # merge train
@@ -103,7 +105,7 @@ predict_death <- function(train_ct, train_lv, train_lm, train_mh, train_pm, trai
   commonCols <- Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
   commonCols  <- commonCols[!commonCols %in% c("DOMAIN", "STUDYID")]
   #commonCols <- commonCols[1:6]
-  subset_train <- subset_train[, Reduce(union, commonCols, c("DEATH"))]
+  subset_train <- subset_train[, Reduce(union, commonCols, c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC"))]
   subset_test <- subset_test[, commonCols]
   
   #print data structure for troubleshooting
@@ -114,9 +116,12 @@ predict_death <- function(train_ct, train_lv, train_lm, train_mh, train_pm, trai
   
   #Run RF
   subset_train.roughfix <- na.roughfix(subset_train)
-  fit <- randomForest(DEATH ~ ., subset_train.roughfix , ntree = 8000)
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC")] , y=subset_train.roughfix$DEATH, ntree = 8000,  importance=TRUE)    
+  write.csv( importance(fit) , file=file.path(outdir, "death_importanceFit.csv"))  
+  
   percentageCorrect =   (length(subset_train$DEATH[subset_train$DEATH == fit$predicted]) / nrow(subset_train) ) * 100  
   print(paste("Percentage correct:", percentageCorrect, " "))
+ 
   
   #Write predicted train data
   train_predicted_df <- data.frame(fit$predicted)
@@ -131,6 +136,60 @@ predict_death <- function(train_ct, train_lv, train_lm, train_mh, train_pm, trai
   
   ##Return model
   print("----End function predict_death---")
-  return(predictions)
+  return(list(predictions=predictions, fit=fit , train=subset_train.roughfix, test=subset_test.roughfix ))  
+}
+
+calc_event <- function(time_period_in_months, row){
+  
+ #if censored no event
+  if (row["DEATH"] == "CENSORED"){
+    return(FALSE)
+  }
+  ##the event has occurred
+  #If the number of months less than time period, even has occurred
+  if ( as.numeric(row["LKADT_P"])/30 <= time_period_in_months){
+    return(TRUE)
+  }
+  #no event
+  return (FALSE)
+}
+
+
+run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir){
+  
+  #apply time period on event
+  df_train <- model_ttl$train
+  df_train$EVENT <- apply(df_train, 1, function(x){
+    calc_event(time_period_in_months, x)
+  })
+  
+  #apply time period on event for test
+  df_test <- model_ttl$test
+  df_test$EVENT <- apply(df_test, 1, function(x){
+    calc_event(time_period_in_months, x)
+  })
+  
+  ##Obtain predictors for cox model.
+  predictor_rating<- importance(model_ttl$fit)[, "%IncMSE"]
+  predictor_rating <- sort(predictor_rating, decreasing = TRUE)
+  topn = 5;
+  formula = as.formula(paste("Surv(LKADT_P, EVENT)" , paste(names(predictor_rating[c(1:topn)]),collapse="+"), sep=" ~ "))
+  print(formula)
+  library(survival)
+  cox_fit = coxph(formula, df_train)
+  print("Dim cox fit")
+  print(cox_fit)
+  
+  #calc score
+  risk_scores_test = predict(cox_fit,type="risk",se.fit=TRUE, newdata = df_test)
+  risk_scores_train = predict(cox_fit,type="risk",se.fit=TRUE, newdata = df_train)
+
+  #write output
+  write.csv( risk_scores_test, file=file.path(outdir, paste("risk_scores_test",  time_period_in_months,".csv", sep="")))
+  write.csv( risk_scores_train, file=file.path(outdir, paste("risk_scores_train", time_period_in_months ,".csv", sep="")))
+
+  return(list(train= risk_scores_train, test =risk_scores_test ))
+  #print(df_train[, c("risk_score", names(predictor_rating[c(1:topn)]))])
   
 }
+
