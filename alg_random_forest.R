@@ -72,6 +72,7 @@ predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm,
   subset_test.roughfix <- na.roughfix(subset_test)
   predictions = predict(fit, subset_test.roughfix )  
   write.csv( predictions, file=file.path(outdir, "timetolive_predictedtest.csv"))
+  write.csv( data.frame(RPT=names(predictions), TIMETOEVENT=predictions), file=file.path(outdir, "submission_1b.csv"), row.names=FALSE)
   
   ##Return model
   print("----end function predict_timetolive---")
@@ -145,6 +146,10 @@ calc_event <- function(time_period_in_months, row){
   if (row["DEATH"] == "CENSORED"){
     return(FALSE)
   }
+  # for time agnostic calc, the event occurs for if not cenceored
+  if (time_period_in_months <= 0){
+    return(TRUE)
+  }
   ##the event has occurred
   #If the number of months less than time period, even has occurred
   if ( as.numeric(row["LKADT_P"])/30 <= time_period_in_months){
@@ -163,8 +168,19 @@ run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir
     calc_event(time_period_in_months, x)
   })
   
-  #apply time period on event for test
+  #apply time period on event for test  
   df_test <- model_ttl$test
+  death_predictions <- model_death$predictions
+  ttl_predictions <- model_ttl$predictions
+  print(death_predictions )
+  print(ttl_predictions )
+  print(death_predictions )
+ 
+  df_test$DEATH <- death_predictions[rownames(df_test)]
+  df_test$LKADT_P <-  ttl_predictions[rownames(df_test)]
+  
+  print(df_test[, c("LKADT_P", "DEATH")])
+ 
   df_test$EVENT <- apply(df_test, 1, function(x){
     calc_event(time_period_in_months, x)
   })
@@ -172,7 +188,10 @@ run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir
   ##Obtain predictors for cox model.
   predictor_rating<- importance(model_ttl$fit)[, "%IncMSE"]
   predictor_rating <- sort(predictor_rating, decreasing = TRUE)
-  topn = 5;
+  topn = ceiling(length(predictor_rating[which(predictor_rating>0)]) * .25) # only consider top 25%
+  print("topn length")
+  print(length(predictor_rating))
+  print(topn)
   formula = as.formula(paste("Surv(LKADT_P, EVENT)" , paste(names(predictor_rating[c(1:topn)]),collapse="+"), sep=" ~ "))
   print(formula)
   library(survival)
@@ -184,11 +203,12 @@ run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir
   risk_scores_test = predict(cox_fit,type="risk",se.fit=TRUE, newdata = df_test)
   risk_scores_train = predict(cox_fit,type="risk",se.fit=TRUE, newdata = df_train)
 
+
   #write output
   write.csv( risk_scores_test, file=file.path(outdir, paste("risk_scores_test",  time_period_in_months,".csv", sep="")))
   write.csv( risk_scores_train, file=file.path(outdir, paste("risk_scores_train", time_period_in_months ,".csv", sep="")))
 
-  return(list(train= risk_scores_train, test =risk_scores_test ))
+  return(list(train=risk_scores_train, test =risk_scores_test ))
   #print(df_train[, c("risk_score", names(predictor_rating[c(1:topn)]))])
   
 }

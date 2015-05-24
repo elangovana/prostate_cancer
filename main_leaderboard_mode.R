@@ -3,7 +3,16 @@ input_data_dir = "./input_dat"
 out_dir = "./out_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
-count = 50
+count = 0
+
+#set up logging
+setup_log <- function(outdir){
+  con <- file(file.path(outdir,"run.log"))
+  sink(con, append=TRUE)
+  sink(con, append=TRUE, type="message")
+}
+sink()
+setup_log(out_dir)
 ####Download Train data#############
 
 CoreTable_synapse_entity <- file.path(input_data_train_dir,"CoreTable_training.csv") 
@@ -71,6 +80,39 @@ test_vs <- VitalSign_test [VitalSign_test$RPT %in% rownames(test_ct), ]
 
 
 source("./ml_pipeline.R")
-ml_pipeline(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+result = ml_pipeline(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
             test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
 
+df_predicted <- result$df_predicted
+source("./score.R")
+
+
+#RMSE Train
+train_predictions_ttl = result$model_ttl$fit$predicted
+rmse_train = score_q1b(train_predictions_ttl,CoreTable_training[names(train_predictions_ttl), c("LKADT_P")], CoreTable_training[names(train_predictions_ttl), c("DEATH")])
+
+#risk train
+risk_score_global <- result$risk_score_global$train$fit
+risk_score_12 <- result$risk_score_12$train$fit
+risk_score_18 <- result$risk_score_18$train$fit
+risk_score_24 <- result$risk_score_24$train$fit
+risk_score_train <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
+
+
+print("Global risk score on test: ")
+risk_score_global <- result$risk_score_global$test$fit
+
+risk_score_12 <- result$risk_score_12$test$fit
+risk_score_18 <- result$risk_score_18$test$fit
+risk_score_24 <- result$risk_score_24$test$fit
+
+risk_score_test <- score_q1a(df_predicted[names(risk_score_global), c("LKADT_P")],df_predicted[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
+
+
+print("-----OUTPUT---")
+#RMSE Comparitive output
+print(paste( "RMSE on train:",  rmse_train))
+print("Global risk score on train: ")
+risk_score_train
+print("Global risk score on test: ")
+risk_score_test
