@@ -1,16 +1,22 @@
 merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
   ## Merge all med information from multiple datasets into one large wide dataset
-  # merge train
+  # merge train core table with lab value
   df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
   rownames(df_subset_merged) <- df_subset_merged$Row.names
   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  #merge Lesion
+  
+  #merge Lesion measure
   df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c("", ".lm" ))
   rownames(df_subset_merged) <- df_subset_merged$Row.names
   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
   
+  #merge medical history
+  df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c("", ".mh" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
   
   return(df_subset_merged)
+  
 }
 
 

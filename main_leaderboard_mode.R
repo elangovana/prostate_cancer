@@ -1,31 +1,45 @@
-##########
-input_data_dir = "./input_dat"
-out_dir = "./out_dat"
-input_data_train_dir = file.path(input_data_dir, "training")
-input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
-count = 0
-
 #set up logging
 setup_log <- function(outdir){
   con <- file(file.path(outdir,"run.log"))
   sink(con, append=TRUE)
   sink(con, append=TRUE, type="message")
 }
+
+setup_outdir <- function(outdir){
+  if (!file.exists(outdir)){  
+    dir.create(file.path(".", outdir)) 
+  }
+  cur_time=format(Sys.time(), "%Y%b%d_%H%M%S")
+  outdir = file.path(outdir, cur_time)
+  dir.create(outdir, cur_time)  
+  return(outdir)
+}
+
+########## M A I N ####
+out_dir = "./out_dat"
 sink()
+out_dir <- setup_outdir(out_dir)
 setup_log(out_dir)
+
+input_data_dir = "./input_dat"
+input_data_train_dir = file.path(input_data_dir, "training")
+input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
+count = 100
+
+
 ####Download Train data#############
 
 CoreTable_synapse_entity <- file.path(input_data_train_dir,"CoreTable_training.csv") 
-CoreTable_training <- read.csv(CoreTable_synapse_entity, row.names="RPT", header=T, na.strings=c(".",""), as.is=c("RPT","AGEGRP", "DOMAIN", "STUDY"), colClasses=c(STOMACH="factor"))
+CoreTable_training <- read.csv(CoreTable_synapse_entity, row.names="RPT", header=T, na.strings=c(".",""), as.is=c("RPT","AGEGRP"), colClasses=c(STOMACH="factor"))
 
 LabValue_synapse_entity <- file.path(input_data_train_dir,"LabValue_training.csv") 
-LabValue_training <- read.csv(LabValue_synapse_entity, header=T, na.strings=".",as.is=c("RPT","DOMAIN", "STUDY"))
+LabValue_training <- read.csv(LabValue_synapse_entity, header=T, na.strings=".",as.is=c("RPT"))
 
 LesionMeasure_synapse_entity <- file.path(input_data_train_dir, "LesionMeasure_training.csv")
-LesionMeasure_training <- read.csv(LesionMeasure_synapse_entity, header=T, na.strings=".")
+LesionMeasure_training <- read.csv(LesionMeasure_synapse_entity, header=T, na.strings=".", as.is=c("RPT"))
 
 MedHistory_synapse_entity <- file.path(input_data_train_dir,"MedHistory_training.csv")
-MedHistory_training <- read.csv(MedHistory_synapse_entity, header=T, na.strings=".")
+MedHistory_training <- read.csv(MedHistory_synapse_entity, header=T, na.strings=c(".", ""),  as.is=c("RPT"))
 
 PriorMed_synapse_entity <- file.path(input_data_train_dir,"PriorMed_training.csv")
 PriorMed_training <- read.csv(PriorMed_synapse_entity, header=T, na.strings=".")
@@ -37,16 +51,16 @@ VitalSign_training <- read.csv(VitalSign_synapse_entity, header=T, na.strings=".
 
 
 CoreTable_synapse_entity <- file.path(input_data_leaderboard_dir,"CoreTable_leaderboard.csv") 
-CoreTable_test <- read.csv(CoreTable_synapse_entity, row.names="RPT", header=T, na.strings=c(".",""), as.is=c("RPT","AGEGRP", "DOMAIN", "STUDY"), colClasses=c(STOMACH="factor"))
+CoreTable_test <- read.csv(CoreTable_synapse_entity, row.names="RPT", header=T, na.strings=c(".",""), as.is=c("RPT","AGEGRP"), colClasses=c(STOMACH="factor"))
 
 LabValue_synapse_entity <- file.path(input_data_leaderboard_dir,"LabValue_leaderboard.csv") 
-LabValue_test <- read.csv(LabValue_synapse_entity, header=T, na.strings=".",as.is=c("RPT","DOMAIN", "STUDY"))
+LabValue_test <- read.csv(LabValue_synapse_entity, header=T, na.strings=".",as.is=c("RPT"))
 
 LesionMeasure_synapse_entity <- file.path(input_data_leaderboard_dir, "LesionMeasure_leaderboard.csv")
-LesionMeasure_test<- read.csv(LesionMeasure_synapse_entity, header=T, na.strings=".")
+LesionMeasure_test<- read.csv(LesionMeasure_synapse_entity, header=T, na.strings=".",as.is=c("RPT"))
 
 MedHistory_synapse_entity <- file.path(input_data_leaderboard_dir,"MedHistory_leaderboard.csv")
-MedHistory_test<- read.csv(MedHistory_synapse_entity, header=T, na.strings=".")
+MedHistory_test<- read.csv(MedHistory_synapse_entity, header=T, na.strings=c(".",""), as.is=c("RPT"))
 
 PriorMed_synapse_entity <- file.path(input_data_leaderboard_dir,"PriorMed_leaderboard.csv")
 PriorMed_test <- read.csv(PriorMed_synapse_entity, header=T, na.strings=".")
