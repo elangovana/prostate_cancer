@@ -48,10 +48,10 @@ MedHistory_synapse_entity <- file.path(input_data_train_dir,"MedHistory_training
 MedHistory_training <- read.csv(MedHistory_synapse_entity, header=T, na.strings=c(".", ""), as.is=c("RPT"))
 
 PriorMed_synapse_entity <- file.path(input_data_train_dir,"PriorMed_training.csv")
-PriorMed_training <- read.csv(PriorMed_synapse_entity, header=T, na.strings=".", as.is=c("RPT"))
+PriorMed_training <- read.csv(PriorMed_synapse_entity, header=T, na.strings=c(".", ""), as.is=c("RPT"))
 
 VitalSign_synapse_entity <- file.path(input_data_train_dir,"VitalSign_training.csv")
-VitalSign_training <- read.csv(VitalSign_synapse_entity, header=T, na.strings=".", as.is=c("RPT"))
+VitalSign_training <- read.csv(VitalSign_synapse_entity, header=T, na.strings=c(".", ""), as.is=c("RPT"))
 
 ##
 

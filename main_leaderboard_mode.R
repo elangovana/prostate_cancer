@@ -42,10 +42,10 @@ MedHistory_synapse_entity <- file.path(input_data_train_dir,"MedHistory_training
 MedHistory_training <- read.csv(MedHistory_synapse_entity, header=T, na.strings=c(".", ""),  as.is=c("RPT"))
 
 PriorMed_synapse_entity <- file.path(input_data_train_dir,"PriorMed_training.csv")
-PriorMed_training <- read.csv(PriorMed_synapse_entity, header=T, na.strings=".")
+PriorMed_training <- read.csv(PriorMed_synapse_entity, header=T, na.strings=c(".", ""))
 
 VitalSign_synapse_entity <- file.path(input_data_train_dir,"VitalSign_training.csv")
-VitalSign_training <- read.csv(VitalSign_synapse_entity, header=T, na.strings=".")
+VitalSign_training <- read.csv(VitalSign_synapse_entity, header=T, na.strings=c(".", ""))
 
 ## Test Data
 
@@ -63,10 +63,10 @@ MedHistory_synapse_entity <- file.path(input_data_leaderboard_dir,"MedHistory_le
 MedHistory_test<- read.csv(MedHistory_synapse_entity, header=T, na.strings=c(".",""), as.is=c("RPT"))
 
 PriorMed_synapse_entity <- file.path(input_data_leaderboard_dir,"PriorMed_leaderboard.csv")
-PriorMed_test <- read.csv(PriorMed_synapse_entity, header=T, na.strings=".")
+PriorMed_test <- read.csv(PriorMed_synapse_entity, header=T, na.strings=c(".", ""))
 
 VitalSign_synapse_entity <- file.path(input_data_leaderboard_dir,"VitalSign_leaderboard.csv")
-VitalSign_test <- read.csv(VitalSign_synapse_entity, header=T, na.strings=".")
+VitalSign_test <- read.csv(VitalSign_synapse_entity, header=T, na.strings=c(".", ""))
 
 ## Split training data into training and test
 

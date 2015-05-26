@@ -37,24 +37,25 @@ remove_duplicated_record <- function(data, cols){
 }
 
 flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data, columns_agg_function = NULL){
-  if (!is.null(columns_agg_function)){
-    df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1], fun.aggregate= columns_agg_function[[1]] )  
-  }      
-  else{
-    df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1] )  
-  }
+#   if (!is.null(columns_agg_function)){
+#     df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1], fun.aggregate= columns_agg_function[[1]] )  
+#   }      
+#   else{
+#     df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1] )  
+#   }
+#   
+#   #assign correct rownames and remove row name column
+#   rownames(df_flattened_so_far) <- df_flattened_so_far$RPT  
+#   df_flattened_so_far <- subset(df_flattened_so_far, select=-c(RPT))
+#   print(paste("is agg function null", is.null(columns_agg_function)))
+#   
+#   
+#   if (length(columns_to_flatten) == 1){
+#     return (df_flattened_so_far)
+#   }
   
-  #assign correct rownames and remove row name column
-  rownames(df_flattened_so_far) <- df_flattened_so_far$RPT  
-  df_flattened_so_far <- subset(df_flattened_so_far, select=-c(RPT))
-  print(paste("is agg function null", is.null(columns_agg_function)))
-  
-  
-  if (length(columns_to_flatten) == 1){
-    return (df_flattened_so_far)
-  }
-  
-  for(i in 2:length(columns_to_flatten)){
+  df_flattened_so_far = NULL
+  for(i in 1:length(columns_to_flatten)){
     c = columns_to_flatten[i]
    
     #cast long to wide, value Start Event Date period value in days
@@ -66,28 +67,35 @@ flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWid
     }  
     
     #ensure character columns are converted to factors
-    cols_widened = !colnames(df_temp) %in% longToWideIdKeyColumns
-    df_temp[, cols_widened] <- lapply(df_temp[, cols_widened], function(x){
+    cols_widened = colnames(df_temp)[ which(!colnames(df_temp) %in% longToWideIdKeyColumns)]
+    df_temp[, cols_widened] <- lapply(df_temp[, cols_widened], function(x){     
       if (is.character(x)) return(as.factor(x))
       return(x)
     })
-    
+   
     #correct row names
     rownames(df_temp) <- df_temp$RPT  
     df_temp <- subset(df_temp, select=-c(RPT))
-    
+   
     #     ##Debug
     #     print("#Debug - str(df_flattened_so_far)")
     #     print(str(df_flattened_so_far))
     #     print("#Debug - str(df_temp)")
     #     print(str(df_temp))
     
-    #merge newly casted df and the previous df 
-    df_flattened_so_far <- merge(df_flattened_so_far, df_temp, by=0, all.x=TRUE, suffixes=c("", paste("_", c, sep="" ) ))
+   
+    if (is.null(df_flattened_so_far)){
+      df_flattened_so_far <- df_temp
+    }else {
+      #merge newly casted df and the previous df 
+      df_flattened_so_far <- merge(df_flattened_so_far, df_temp, by=0, all.x=TRUE, suffixes=c("", paste("_", c, sep="" ) ))
+      print(str(df_flattened_so_far))
+      #assign correct rownames and remove row name column
+      rownames(df_flattened_so_far) <- df_flattened_so_far$Row.names  
+      df_flattened_so_far <- subset(df_flattened_so_far, select=-c(Row.names)) 
+    }
     
-    #assign correct rownames and remove row name column
-    rownames(df_flattened_so_far) <- df_flattened_so_far$Row.names  
-    df_flattened_so_far <- subset(df_flattened_so_far, select=-c(Row.names)) 
+   
   }
   
   return(df_flattened_so_far)
@@ -641,15 +649,16 @@ clean_prior_medicals<- function(data){
   data <- remove_duplicated_record(data, longToWideIdKeyColumns)
   
   #all value to cast to wide
-  columns_to_flatten <- c ("CMINTENT"
-                           , "CMSCAT"
+  columns_to_flatten <- c ( "CMSCAT"
                            ,"CMSSCAT"
                            , "cmatc4"
                            ,"cmatc3"
                            ,"cmatc2"
                            ,"CMATC1")
-  
-  
+  print("Unqiue values")
+  for(c in columns_to_flatten){
+    print(paste(c, length(unique(data[, c(c)]))))
+  }
   data <- flatten_long_to_wide(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data)
   
   #clean up column names to remove -, # white space, replaced with _

@@ -20,6 +20,11 @@ merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
   rownames(df_subset_merged) <- df_subset_merged$Row.names
   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
   
+#   #merge prior medications
+#   df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c("", ".pm" ))
+#   rownames(df_subset_merged) <- df_subset_merged$Row.names
+#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
   return(df_subset_merged)
   
 }
