@@ -24,7 +24,7 @@ setup_log(out_dir)
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
-count = 100
+count = 0
 
 
 ####Download Train data#############
@@ -130,3 +130,5 @@ print("Global risk score on train: ")
 risk_score_train
 print("Global risk score on test: ")
 risk_score_test
+
+warnings()

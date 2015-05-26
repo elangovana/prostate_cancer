@@ -9,6 +9,7 @@ ml_pipeline <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_
   train_lv <- clean_labvalue_data (train_lv)
   train_lm <- clean_lesionmeasure_data(train_lm)
   train_mh <- clean_medical_history(train_mh)
+  train_vs <- clean_vital_signs(train_vs)
   
   #clean test
   print("cleaning core table for test")
@@ -16,6 +17,8 @@ ml_pipeline <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_
   test_lv <- clean_labvalue_data (test_lv)
   test_lm <- clean_lesionmeasure_data(test_lm)
   test_mh <- clean_medical_history(test_mh)
+  test_vs <- clean_vital_signs(test_vs)
+  
   
   source("./alg_random_forest.R")
   model_ttl <- predict_timetolive(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
