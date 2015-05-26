@@ -28,7 +28,7 @@ setup_log(out_dir)
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 count = 500
-test_count = 10
+test_count = 100
 
 
 

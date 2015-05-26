@@ -23,36 +23,47 @@ clean_labels <- function (train_ct){
 
 remove_duplicated_record <- function(data, cols){
   #remove duplicated lab results
-    duplicated_data <- duplicated(data[,  cols])
-    duplicate_count <-length (duplicated_data[duplicated_data == TRUE])
-    
-    if ( duplicate_count > 0){
-      warning(paste("Duplicates found:", duplicate_count,  "These will be removed!!", sep = " " ))
-      print("Duplicate lab result record keys :")
-      print(data[duplicated_data, cols])
-      data <- data[ !duplicated_data, ]
-    } 
-    
-    return(data)
+  duplicated_data <- duplicated(data[,  cols])
+  duplicate_count <-length (duplicated_data[duplicated_data == TRUE])
+  
+  if ( duplicate_count > 0){
+    warning(paste("Duplicates found:", duplicate_count,  "These will be removed!!", sep = " " ))
+    print("Duplicate lab result record keys :")
+    print(data[duplicated_data, cols])
+    data <- data[ !duplicated_data, ]
+  } 
+  
+  return(data)
 }
 
 flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data, columns_agg_function = NULL){
+  if (!is.null(columns_agg_function)){
+    df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1], fun.aggregate= columns_agg_function[[1]] )  
+  }      
+  else{
+    df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1] )  
+  }
   
-  df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1] )
   #assign correct rownames and remove row name column
   rownames(df_flattened_so_far) <- df_flattened_so_far$RPT  
   df_flattened_so_far <- subset(df_flattened_so_far, select=-c(RPT))
+  print(paste("is agg function null", is.null(columns_agg_function)))
+  
+  
+  if (length(columns_to_flatten) == 1){
+    return (df_flattened_so_far)
+  }
   
   for(i in 2:length(columns_to_flatten)){
     c = columns_to_flatten[i]
+   
     #cast long to wide, value Start Event Date period value in days
     if (!is.null(columns_agg_function)){
-      df_temp <- dcast(data,  longToWideFormula, value.var=columns_agg_function[i] )  
+      df_temp <- dcast(data,  longToWideFormula, value.var=c, fun.aggregate=columns_agg_function[[i]] )  
     }      
     else{
-      df_temp <- dcast(data,  longToWideFormula )  
-    }
-      
+      df_temp <- dcast(data,  longToWideFormula, value.var=c )  
+    }  
     
     #ensure character columns are converted to factors
     cols_widened = !colnames(df_temp) %in% longToWideIdKeyColumns
@@ -76,8 +87,9 @@ flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWid
     
     #assign correct rownames and remove row name column
     rownames(df_flattened_so_far) <- df_flattened_so_far$Row.names  
-    df_flattened_so_far <- subset(df_flattened_so_far, select=-c(Row.names))   
+    df_flattened_so_far <- subset(df_flattened_so_far, select=-c(Row.names)) 
   }
+  
   return(df_flattened_so_far)
 }
 
@@ -523,7 +535,7 @@ clean_medical_history<- function(data){
   longToWideFormula <- as.formula("RPT ~ MHDECOD + MHBODSYS" )
   longToWideIdKeyColumns = c(  "RPT", "MHDECOD" ,"MHBODSYS" )
   
- 
+  
   data <- remove_duplicated_record(data, longToWideIdKeyColumns)
   
   #all value to cast to wide
@@ -537,18 +549,18 @@ clean_medical_history<- function(data){
                            ,"MHPRESP"
                            ,"MHENRF"
                            ,"MHENRFO"
-#                           ,"VISIT"
-#                           ,"VISITNUM"
+                           #                           ,"VISIT"
+                           #                           ,"VISITNUM"
                            #,"MHCAT"
                            #,"MHCONTR"
                            #,"MHPTCD"
                            #,"MHSOC1FL"
-#                           ,"MHSOCCD"
-#                            ,"MHHLGTCD"
-#                            ,"MHHLTCD"
-#                            ,"MHLLTCD"
+                           #                           ,"MHSOCCD"
+                           #                            ,"MHHLGTCD"
+                           #                            ,"MHHLTCD"
+                           #                            ,"MHLLTCD"
   )
-
+  
   
   data <- flatten_long_to_wide(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data)
   
@@ -590,8 +602,8 @@ clean_vital_signs<- function(data){
   #all value to cast to wide
   columns_to_flatten <- c ("VSSTRESN"  )
   
-  columns_agg_function <- c(mean )
-  data <- flatten_long_to_wide(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data)
+  columns_agg_function <- c(mean)
+  data <- flatten_long_to_wide(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data, columns_agg_function)
   
   
   
@@ -602,5 +614,50 @@ clean_vital_signs<- function(data){
   print(str(data, list.len = 999))
   
   print("--- end clean_vital_signs ----")
+  return(data)
+}
+
+clean_prior_medicals<- function(data){
+  print("--- Begin function clean_prior_medicals ----")
+  
+  library(reshape2)
+  print("Input prior medication data structure")
+  print(str(data))
+  
+  if (nrow(data) == 0){
+    warning("Vital signs data frame empty. Hence vital signs values will not be used")
+    return (data)
+  }
+  
+  #If  code is NA, replace with description  
+  levels(data$CMDECOD) <- c(levels(data$CMDECOD), as.character(unique(data$CMTRT[is.na(data$CMDECOD)])))
+  data$CMDECOD[is.na(data$CMDECOD)] <- as.character(data$CMTRT[is.na(data$CMDECOD)])
+  
+  #"DOMAIN" , "STUDYID",
+  longToWideFormula <- as.formula("RPT ~ CMDECOD " )
+  longToWideIdKeyColumns = c(  "RPT", "CMDECOD"  )
+  
+  
+  data <- remove_duplicated_record(data, longToWideIdKeyColumns)
+  
+  #all value to cast to wide
+  columns_to_flatten <- c ("CMINTENT"
+                           , "CMSCAT"
+                           ,"CMSSCAT"
+                           , "cmatc4"
+                           ,"cmatc3"
+                           ,"cmatc2"
+                           ,"CMATC1")
+  
+  
+  data <- flatten_long_to_wide(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data)
+  
+  #clean up column names to remove -, # white space, replaced with _
+  colnames(data) <-clean_names( colnames(data))
+  
+  print("Reshaped prior medication")
+  print(str(data, list.len = 999))
+  
+  print("--- end clean_prior_medicals ----")
   return(data)
 }
