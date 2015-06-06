@@ -6,7 +6,9 @@ predict_timetolive <- function(subset_train, subset_test, dependent_variables, o
     
   #run RF, use rough fix for missing values
   subset_train.roughfix <- na.roughfix(subset_train)
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 1000,  importance=TRUE)
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 1000, mtree=200, importance=TRUE)
+  print("random forest fit: ")
+  print(fit)
   
   write.csv( importance(fit) , file=file.path(outdir, "timetolive_importanceFit.csv"))  
   rmse = sqrt( sum( (subset_train$LKADT_P - fit$predicted)^2 , na.rm = TRUE ) / nrow(subset_train) )  
@@ -38,6 +40,8 @@ predict_death <- function(subset_train, subset_test, dependent_variables, outdir
   subset_train.roughfix <- na.roughfix(subset_train)
   fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$DEATH, ntree = 1000,  importance=TRUE)    
   write.csv( importance(fit) , file=file.path(outdir, "death_importanceFit.csv"))  
+  print("random forest fit: ")
+  print(fit)
   
   percentageCorrect =   (length(subset_train$DEATH[subset_train$DEATH == fit$predicted]) / nrow(subset_train) ) * 100  
   print(paste("Percentage correct:", percentageCorrect, " "))
@@ -136,6 +140,8 @@ predict_discontinuedflag <- function(subset_train, subset_test, dependent_variab
   subset_test.roughfix <- na.roughfix(subset_test) 
    
   fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$DISCONT, ntree = 1000,  importance=TRUE)
+  print("random forest fit: ")
+  print(fit)
   
   write.csv( importance(fit) , file=file.path(outdir, "discontinuedflag_importanceFit.csv"))  
   
