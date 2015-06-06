@@ -1,103 +1,9 @@
-merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
-  ## Merge all med information from multiple datasets into one large wide dataset
-  # merge train core table with lab value
-  df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
-  #merge Lesion measure
-  df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c(".ctlv", ".lm" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
-  #merge medical history
-  df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c(".ctlvlm", ".mh" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
-  #merge vital signs
-  df_subset_merged <- merge(df_subset_merged, df_vs, by=0, all.x=TRUE, suffixes= c(".ctlvlmmh", ".vs" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
-  
-  #merge prior medications
-  df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+library(futile.logger)
 
-  
-  return(df_subset_merged)
-  
-}
-
-align_test_train_data<- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                 test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
-  #remove other labels, except for the label LKADT_P that is predicted, from the train set  
-  subset_train_ct <- train_ct
-  
-  dependent_variables = c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC")
-  
-  
-  subset_train <- merge_all_data(subset_train_ct, train_lv, train_lm, train_mh, train_pm, train_vs)
-  #merge test, remove domain study columns as they are duplicates
-  subset_test <- test_ct[, !colnames(test_ct ) %in% c("DOMAIN" , "STUDYID")]
-  subset_test <- merge_all_data(subset_test, test_lv, test_lm, test_mh, test_pm, test_vs)
-  
-  
-  
-  #remove columns with all NA
-  subset_train <- subset_train[,colSums(is.na(subset_train))<nrow(subset_train)]
-  subset_test <- subset_test[, colSums(is.na(subset_test))<nrow(subset_test)]
-  
-  #retain only columns common to both test and train
-  commonCols <- Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
-  commonCols  <- commonCols[!commonCols %in% c("DOMAIN", "STUDYID")]
-  #commonCols <- commonCols[1:6]
-  subset_train <- subset_train[, Reduce(union, commonCols, dependent_variables)]
-  subset_test <- subset_test[, commonCols]
-  
-  for(c in commonCols){
-    if (typeof(subset_train[, c(c)]) != typeof(subset_test[, c(c)])){
-      warning(paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)])))
-    }
-    
-    if (is.factor(subset_train[, c(c)])){
-      levels_in_test_and_train= Reduce(union, as.character(unique(subset_train[, c(c)])), as.character(unique(subset_test[, c(c)])))
-      levels_missing_in_test = setdiff(levels(subset_train[, c(c)]), levels(subset_test[, c(c)]))
-      levels_missing_in_train= setdiff(levels(subset_test[, c(c)]), levels(subset_train[, c(c)]))
-      
-      if (length(levels_missing_in_train) > 0){        
-        levels(subset_train[, c(c)]) <- c(levels(subset_train[, c(c)]), as.character(levels_missing_in_train))
-      }
-      if (length(levels_missing_in_test) > 0){       
-        levels(subset_test[, c(c)]) <- c(levels(subset_test[, c(c)]), as.character(levels_missing_in_test))
-      }   
-    }
-    
-  }
-  
-  
-  print("-----TRAIN DATA SET STRUCTURE AFTER CLEAN UP-------")
-  print(str(subset_train,list.len = 2999 ))
-  print("------TEST DATA SET STRUCTURE AFTER CLEAN UP------")
-  print(str(subset_test,list.len = 2999 ))
-  
-  return(list(train =subset_train, test= subset_test, dependent_variables = dependent_variables))
-}
-
-predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                               test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
+predict_timetolive <- function(subset_train, subset_test, dependent_variables, outdir){
   library("randomForest")
-  print("----begin function predict_timetolive---")
-  
-  aligned_data <- align_test_train_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)
-  
-  subset_train <- aligned_data$train
-  subset_test <- aligned_data$test
-  dependent_variables <- aligned_data$dependent_variables
-  
+  flog.info("Begin function predict_timetolive")
+    
   #run RF, use rough fix for missing values
   subset_train.roughfix <- na.roughfix(subset_train)
   fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 1000,  importance=TRUE)
@@ -118,23 +24,15 @@ predict_timetolive <- function(train_ct, train_lv, train_lm, train_mh, train_pm,
   write.csv( data.frame(RPT=names(predictions), TIMETOEVENT=predictions), file=file.path(outdir, "submission_1b.csv"), row.names=FALSE)
   
   ##Return model
-  print("----end function predict_timetolive---")
+  flog.info("End function predict_timetolive")
   return(list(predictions=predictions, fit=fit, train=subset_train.roughfix, test=subset_test.roughfix ))
   
 }
 
-predict_death <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                          test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
+predict_death <- function(subset_train, subset_test, dependent_variables, outdir){
   
-  print("----Begin function predict_death---")
+  flog.info("Begin function predict_death")
   library("randomForest")
-  
-  aligned_data <- align_test_train_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)
-  
-  subset_train <- aligned_data$train
-  subset_test <- aligned_data$test
-  dependent_variables <- aligned_data$dependent_variables
   
   #Run RF
   subset_train.roughfix <- na.roughfix(subset_train)
@@ -157,7 +55,7 @@ predict_death <- function(train_ct, train_lv, train_lm, train_mh, train_pm, trai
   
   
   ##Return model
-  print("----End function predict_death---")
+  flog.info("End function predict_death")
   return(list(predictions=predictions, fit=fit , train=subset_train.roughfix, test=subset_test.roughfix ))  
 }
 
@@ -198,8 +96,6 @@ run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir
   df_test$DEATH <- death_predictions[rownames(df_test)]
   df_test$LKADT_P <-  ttl_predictions[rownames(df_test)]
   
-  
-  
   df_test$EVENT <- apply(df_test, 1, function(x){
     calc_event(time_period_in_months, x)
   })
@@ -208,11 +104,10 @@ run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir
   predictor_rating<- importance(model_ttl$fit)[, "%IncMSE"]
   predictor_rating <- sort(predictor_rating, decreasing = TRUE)
   topn = ceiling(length(predictor_rating[which(predictor_rating>0)]) * .25) # only consider top 25%
-  print("topn length")
-  print(length(predictor_rating))
-  print(topn)
+  flog.info("No of topN variables used for risk calculation : %s out of %s", topn, length(predictor_rating))  
+ 
   formula = as.formula(paste("Surv(LKADT_P, EVENT)" , paste(names(predictor_rating[c(1:topn)]),collapse="+"), sep=" ~ "))
-  print(formula)
+  flog.debug(formula)
   library(survival)
   cox_fit = coxph(formula, df_train)
   print("Dim cox fit")
@@ -232,23 +127,13 @@ run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir
   
 }
 
-predict_discontinuedflag <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                     test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
+predict_discontinuedflag <- function(subset_train, subset_test, dependent_variables, outdir){
   library("randomForest")
-  print("----Begin function predict_discontinuedflag---")
-  
-  aligned_data <- align_test_train_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)
-  
-  subset_train <- aligned_data$train
-  subset_test <- aligned_data$test
-  dependent_variables <- aligned_data$dependent_variables
-  
-  #run RF, use rough fix for missing values
+  flog.info("Begin function predict_discontinuedflag")
+   #run RF, use rough fix for missing values
   
   subset_train.roughfix <- na.roughfix(subset_train)
-  subset_test.roughfix <- na.roughfix(subset_test)
-  
+  subset_test.roughfix <- na.roughfix(subset_test) 
    
   fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$DISCONT, ntree = 1000,  importance=TRUE)
   
@@ -267,25 +152,17 @@ predict_discontinuedflag <- function(train_ct, train_lv, train_lm, train_mh, tra
   #write.csv( data.frame(RPT=names(predictions), TIMETOEVENT=predictions), file=file.path(outdir, "discontinuedflag_1b.csv"), row.names=FALSE)
   
   ##Return model
-  print("----End function predict_discontinuedflag---")
+  flog.info("End function predict_discontinuedflag")
   return(list(predictions=predictions, fit=fit, train=subset_train.roughfix, test=subset_test.roughfix ))
   
 }
 
 
-predict_discontinuedreason <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                     test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
+predict_discontinuedreason <- function(subset_train, subset_test, dependent_variables,  outdir){
   library("randomForest")
   library("futile.logger")
   flog.info("Begin function predict_discontinuedreason")
-  
-  aligned_data <- align_test_train_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)
-  
-  subset_train <- aligned_data$train
-  subset_test <- aligned_data$test
-  dependent_variables <- aligned_data$dependent_variables
-  
+    
   #run RF, use rough fix for missing values
   
   subset_train.roughfix <- na.roughfix(subset_train)

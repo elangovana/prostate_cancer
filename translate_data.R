@@ -23,6 +23,98 @@ clean_labels <- function (train_ct){
   return(train_ct)
 }
 
+
+merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
+  ## Merge all med information from multiple datasets into one large wide dataset
+  # merge train core table with lab value
+  df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+  #merge Lesion measure
+  df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c(".ctlv", ".lm" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+  #merge medical history
+  df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c(".ctlvlm", ".mh" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+  #merge vital signs
+  df_subset_merged <- merge(df_subset_merged, df_vs, by=0, all.x=TRUE, suffixes= c(".ctlvlmmh", ".vs" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+  
+  #merge prior medications
+  df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+  
+  return(df_subset_merged)
+  
+}
+
+align_test_train_data<- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                                 test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
+  library(futile.logger)
+  #remove other labels, except for the label LKADT_P that is predicted, from the train set  
+  subset_train_ct <- train_ct
+  
+  dependent_variables = c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC")
+  
+  
+  subset_train <- merge_all_data(subset_train_ct, train_lv, train_lm, train_mh, train_pm, train_vs)
+  #merge test, remove domain study columns as they are duplicates
+  subset_test <- test_ct[, !colnames(test_ct ) %in% c("DOMAIN" , "STUDYID")]
+  subset_test <- merge_all_data(subset_test, test_lv, test_lm, test_mh, test_pm, test_vs)
+  
+  
+  
+  #remove columns with all NA
+  subset_train <- subset_train[,colSums(is.na(subset_train))<nrow(subset_train)]
+  subset_test <- subset_test[, colSums(is.na(subset_test))<nrow(subset_test)]
+  
+  #retain only columns common to both test and train
+  commonCols <- Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
+  commonCols  <- commonCols[!commonCols %in% c("DOMAIN", "STUDYID")]
+  #commonCols <- commonCols[1:6]
+  subset_train <- subset_train[, Reduce(union, commonCols, dependent_variables)]
+  subset_test <- subset_test[, commonCols]
+  
+  for(c in commonCols){
+    if (typeof(subset_train[, c(c)]) != typeof(subset_test[, c(c)])){
+      warning(paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)])))
+    }
+    
+    if (is.factor(subset_train[, c(c)])){
+      levels_in_test_and_train= Reduce(union, as.character(unique(subset_train[, c(c)])), as.character(unique(subset_test[, c(c)])))
+      levels_missing_in_test = setdiff(levels(subset_train[, c(c)]), levels(subset_test[, c(c)]))
+      levels_missing_in_train= setdiff(levels(subset_test[, c(c)]), levels(subset_train[, c(c)]))
+      
+      if (length(levels_missing_in_train) > 0){        
+        levels(subset_train[, c(c)]) <- c(levels(subset_train[, c(c)]), as.character(levels_missing_in_train))
+      }
+      if (length(levels_missing_in_test) > 0){       
+        levels(subset_test[, c(c)]) <- c(levels(subset_test[, c(c)]), as.character(levels_missing_in_test))
+      }   
+    }
+    
+  }
+  
+  
+  flog.info("TRAIN DATA SET STRUCTURE AFTER CLEAN UP")
+  flog.info(str(subset_train,list.len = 2999 ))
+  flog.info("TEST DATA SET STRUCTURE AFTER CLEAN UP")
+  flog.info(str(subset_test,list.len = 2999 ))
+  
+  return(list(train =subset_train, test= subset_test, dependent_variables = dependent_variables))
+}
+
+
+
 remove_duplicated_record <- function(data, cols){
   library(futile.logger)
   #remove duplicated lab results

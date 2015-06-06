@@ -1,7 +1,7 @@
 ml_pipeline <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
                          test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir){ 
   source("./translate_data.R")
-  
+ 
   #clean training 
   print("cleaning train")
   train_ct <- clean_ct_data (train_ct)
@@ -21,14 +21,20 @@ ml_pipeline <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_
   test_vs <- clean_vital_signs(test_vs)
   test_pm <- clean_prior_medicals(test_pm)
   
+  
+  #merge parts of data into one
+  aligned_data <- align_test_train_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)  
+  subset_train <- aligned_data$train
+  subset_test <- aligned_data$test
+  dependent_variables <- aligned_data$dependent_variables
+  
   source("./alg_random_forest.R")
-  model_ttl <- predict_timetolive(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                     test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+  model_ttl <- predict_timetolive(subset_train, subset_test,dependent_variables, out_dir)
   df_predicted_ttl <- as.data.frame(model_ttl$predictions, row.names=names(model_ttl$predictions))
   colnames(df_predicted_ttl) <- c("LKADT_P")
   
-  model_death <- predict_death(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+  model_death <- predict_death(subset_train, subset_test, dependent_variables, out_dir)
   df_predicted_death <- as.data.frame(model_death$predictions, row.names=names(model_death$predictions))
   colnames(df_predicted_death) <- c("DEATH")
   
@@ -78,9 +84,15 @@ ml_pipeline_part2 <- function(train_ct, train_lv, train_lm, train_mh, train_pm, 
   test_vs <- clean_vital_signs(test_vs)
   test_pm <- clean_prior_medicals(test_pm)
   
+  #merge parts of data into one
+  aligned_data <- align_test_train_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)  
+  subset_train <- aligned_data$train
+  subset_test <- aligned_data$test
+  dependent_variables <- aligned_data$dependent_variables
+  
   source("./alg_random_forest.R")
-  model_discontinuedflag  <- predict_discontinuedflag(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                  test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+  model_discontinuedflag  <- predict_discontinuedflag(subset_train, subset_test,dependent_variables, out_dir)
   df_predicted_discontinuedflag <- as.data.frame(model_discontinuedflag$predictions, row.names=names(model_discontinuedflag$predictions))
   colnames(df_predicted_discontinuedflag) <- c("DISCONT")
   
@@ -112,9 +124,16 @@ ml_pipeline_part3 <- function(train_ct, train_lv, train_lm, train_mh, train_pm, 
   test_vs <- clean_vital_signs(test_vs)
   test_pm <- clean_prior_medicals(test_pm)
   
+  #merge parts of data into one
+  aligned_data <- align_test_train_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)  
+  subset_train <- aligned_data$train
+  subset_test <- aligned_data$test
+  dependent_variables <- aligned_data$dependent_variables
+  
+  #run ml alg
   source("./alg_random_forest.R")
-  model_discontinuedreason  <- predict_discontinuedreason(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                                      test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+  model_discontinuedreason  <- predict_discontinuedreason(subset_train, subset_test,dependent_variables, out_dir)
   df_predicted_discontinuedreason <- as.data.frame(model_discontinuedreason$predictions, row.names=names(model_discontinuedreason$predictions))
   colnames(df_predicted_discontinuedreason) <- c("ENDTRS_C")
   

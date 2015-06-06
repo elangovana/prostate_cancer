@@ -31,8 +31,8 @@ appender.file(log_output)
 
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 1200
-test_count = 400
+count = 100
+test_count = 10
 
 
 
