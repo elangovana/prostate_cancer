@@ -53,3 +53,72 @@ ml_pipeline <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_
   
   return (list(df_predicted=df_predicted, model_death= model_death, model_ttl= model_ttl, risk_score_12=score_12,risk_score_24=score_24, risk_score_18=score_18, risk_score_global=score_global ) )
 }
+
+
+ml_pipeline_part2 <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir){ 
+  source("./translate_data.R")
+  
+  #clean training 
+  print("cleaning train")
+  train_ct <- clean_ct_data (train_ct)
+  train_ct <- clean_labels (train_ct)
+  train_lv <- clean_labvalue_data (train_lv)
+  train_lm <- clean_lesionmeasure_data(train_lm)
+  train_mh <- clean_medical_history(train_mh)
+  train_vs <- clean_vital_signs(train_vs)
+  train_pm <- clean_prior_medicals(train_pm)
+  
+  #clean test
+  print("cleaning core table for test")
+  test_ct <- clean_ct_data(test_ct)  
+  test_lv <- clean_labvalue_data (test_lv)
+  test_lm <- clean_lesionmeasure_data(test_lm)
+  test_mh <- clean_medical_history(test_mh)
+  test_vs <- clean_vital_signs(test_vs)
+  test_pm <- clean_prior_medicals(test_pm)
+  
+  source("./alg_random_forest.R")
+  model_discontinuedflag  <- predict_discontinuedflag(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                                  test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+  df_predicted_discontinuedflag <- as.data.frame(model_discontinuedflag$predictions, row.names=names(model_discontinuedflag$predictions))
+  colnames(df_predicted_discontinuedflag) <- c("DISCONT")
+  
+ 
+  
+  return (list(df_predicted=df_predicted_discontinuedflag, model_discontinuedflag= model_discontinuedflag ) )
+}
+
+ml_pipeline_part3 <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                              test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir){ 
+  source("./translate_data.R")
+  
+  #clean training 
+  print("cleaning train")
+  train_ct <- clean_ct_data (train_ct)
+  train_ct <- clean_labels (train_ct)
+  train_lv <- clean_labvalue_data (train_lv)
+  train_lm <- clean_lesionmeasure_data(train_lm)
+  train_mh <- clean_medical_history(train_mh)
+  train_vs <- clean_vital_signs(train_vs)
+  train_pm <- clean_prior_medicals(train_pm)
+  
+  #clean test
+  print("cleaning core table for test")
+  test_ct <- clean_ct_data(test_ct)  
+  test_lv <- clean_labvalue_data (test_lv)
+  test_lm <- clean_lesionmeasure_data(test_lm)
+  test_mh <- clean_medical_history(test_mh)
+  test_vs <- clean_vital_signs(test_vs)
+  test_pm <- clean_prior_medicals(test_pm)
+  
+  source("./alg_random_forest.R")
+  model_discontinuedreason  <- predict_discontinuedreason(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                                                      test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+  df_predicted_discontinuedreason <- as.data.frame(model_discontinuedreason$predictions, row.names=names(model_discontinuedreason$predictions))
+  colnames(df_predicted_discontinuedreason) <- c("ENDTRS_C")
+  
+  
+  
+  return (list(df_predicted=df_predicted_discontinuedreason, model_discontinuedreason= model_discontinuedreason ) )
+}

@@ -17,19 +17,22 @@ clean_labels <- function (train_ct){
   levels(train_ct$DEATH) <- c("YES", "CENSORED")
   train_ct$DEATH[is.na( train_ct$DEATH)] <- "CENSORED"   
   
+  #Discont
+  train_ct$DISCONT <- as.factor(train_ct$DISCONT)
   
   return(train_ct)
 }
 
 remove_duplicated_record <- function(data, cols){
+  library(futile.logger)
   #remove duplicated lab results
   duplicated_data <- duplicated(data[,  cols])
   duplicate_count <-length (duplicated_data[duplicated_data == TRUE])
   
   if ( duplicate_count > 0){
     warning(paste("Duplicates found:", duplicate_count,  "These will be removed!!", sep = " " ))
-    print("Duplicate lab result record keys :")
-    print(data[duplicated_data, cols])
+    flog.warn("Duplicate lab result record keys found")
+    flog.debug(data[duplicated_data, cols])
     data <- data[ !duplicated_data, ]
   } 
   
@@ -37,6 +40,8 @@ remove_duplicated_record <- function(data, cols){
 }
 
 flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data, columns_agg_function = NULL){
+  library(futile.logger)
+  flog.info("Running function flatten_long_to_wide")
 #   if (!is.null(columns_agg_function)){
 #     df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1], fun.aggregate= columns_agg_function[[1]] )  
 #   }      
@@ -89,7 +94,7 @@ flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWid
     }else {
       #merge newly casted df and the previous df 
       df_flattened_so_far <- merge(df_flattened_so_far, df_temp, by=0, all.x=TRUE, suffixes=c("", paste("_", c, sep="" ) ))
-      print(str(df_flattened_so_far))
+      flog.trace(str(df_flattened_so_far,  list.len = 999))
       #assign correct rownames and remove row name column
       rownames(df_flattened_so_far) <- df_flattened_so_far$Row.names  
       df_flattened_so_far <- subset(df_flattened_so_far, select=-c(Row.names)) 
@@ -102,8 +107,9 @@ flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWid
 }
 
 clean_ct_data <- function(train_ct){
-  
-  print(head(rownames(train_ct)))
+  library(futile.logger)
+  flog.info("Begin function clean_ct_data")
+  flog.debug(str(train_ct, list.len = 999))
   #format age group
   train_ct$AGEGRP <- as.numeric(train_ct$AGEGRP)
   
@@ -453,7 +459,8 @@ clean_ct_data <- function(train_ct){
 
 clean_labvalue_data <- function(labvalue_data){
   library(reshape2)
-  print("--- begin function clean_labvalue_data ----")
+  library(futile.logger)
+  flog.info("Begin function clean_labvalue_data")
   
   #clean up data
   #remove rows with NA labresult
@@ -484,18 +491,19 @@ clean_labvalue_data <- function(labvalue_data){
   #clean up column names to remove -, # white space, replaced with _  
   colnames(labvalue_result) <-clean_names(colnames(labvalue_result))  
   
-  print("Tranformed lab value structure")
-  print(str(labvalue_result))
+  flog.info("Tranformed lab value structure")
+  flog.debug(str(labvalue_result, list.len = 999))
   
-  print("--- end clean_labvalue_data ----")
+  flog.info("End function clean_labvalue_data")
   return(labvalue_result)
 }
 
 
 clean_lesionmeasure_data <- function(labmeasure_data){
   library(reshape2)
-  print("--- begin function clean_labmeasure_data ----")
-  print(str(labmeasure_data))
+  library(futile.logger)
+  flog.info("Begin function clean_labmeasure_data")
+  flog.debug(str(labmeasure_data, list.len = 999))
   
   if (nrow(labmeasure_data) == 0){
     warning("Lab measure data frame empty. Hence lab measure values will not be used")
@@ -518,17 +526,18 @@ clean_lesionmeasure_data <- function(labmeasure_data){
   colnames(labvalue_result) <-clean_names( colnames(labvalue_result))
   
   
-  print(str(labvalue_result))
-  print("--- end clean_labmeasure_data ----")
+  flog.debug(str(labvalue_result, list.len = 999))
+  flog.info("End function clean_labmeasure_data")
   return(labvalue_result)
 }
 
 clean_medical_history<- function(data){
-  print("--- begin function clean_medical_history ----")
+  library(futile.logger)
+  flog.info("Begin function clean_medical_history")
   
   library(reshape2)
-  print("Input medical history data structure")
-  print(str(data))
+  flog.debug("Input medical history data structure")
+  flog.debug(str(data, list.len = 999))
   
   if (nrow(data) == 0){
     warning("Medical history data frame empty. Hence medical history values will not be used")
@@ -577,19 +586,19 @@ clean_medical_history<- function(data){
   #clean up column names to remove -, # white space, replaced with _
   colnames(data) <-clean_names( colnames(data))
   
-  print("Reshaped medical history")
-  print(str(data, list.len = 999))
+  flog.debug("Reshaped medical history")
+  flog.debug(str(data, list.len = 999))
   
-  print("--- end clean_medical_history ----")
+  flog.info("End functionclean_medical_history")
   return(data)
 }
 
 clean_vital_signs<- function(data){
-  print("--- Begin function clean_vital_signs ----")
-  
+  flog.info("Begin function clean_vital_signs")
+  library(futile.logger)
   library(reshape2)
-  print("Input vital signs data structure")
-  print(str(data))
+  flog.debug("Input vital signs data structure")
+  flog.debug(str(data, list.len = 999))
   
   if (nrow(data) == 0){
     warning("Vital signs data frame empty. Hence vital signs values will not be used")
@@ -618,24 +627,27 @@ clean_vital_signs<- function(data){
   #clean up column names to remove -, # white space, replaced with _
   colnames(data) <-clean_names( colnames(data))
   
-  print("Reshaped vital signs")
-  print(str(data, list.len = 999))
+  flog.debug("Reshaped vital signs")
+  flog.debug(str(data, list.len = 999))
   
-  print("--- end clean_vital_signs ----")
+  flog.info("End function clean_vital_signs")
   return(data)
 }
 
 clean_prior_medicals<- function(data){
-  print("--- Begin function clean_prior_medicals ----")
-  
+  flog.info("Begin function clean_prior_medicals")
+  library(futile.logger)
   library(reshape2)
-  print("Input prior medication data structure")
-  print(str(data))
+  flog.debug("Input prior medication data structure")
+  flog.debug(str(data, list.len = 999))
   
   if (nrow(data) == 0){
     warning("Vital signs data frame empty. Hence vital signs values will not be used")
     return (data)
   }
+  
+  data$CMTRT <- clean_names(data$CMTRT)
+  data$CMDECOD <- as.factor(clean_names(data$CMDECOD))
   
   #If  code is NA, replace with description  
   levels(data$CMDECOD) <- c(levels(data$CMDECOD), as.character(unique(data$CMTRT[is.na(data$CMDECOD)])))
@@ -649,24 +661,18 @@ clean_prior_medicals<- function(data){
   data <- remove_duplicated_record(data, longToWideIdKeyColumns)
   
   #all value to cast to wide
-  columns_to_flatten <- c ( "CMSCAT"
-                           ,"CMSSCAT"
-                           , "cmatc4"
-                           ,"cmatc3"
-                           ,"cmatc2"
-                           ,"CMATC1")
-  print("Unqiue values")
-  for(c in columns_to_flatten){
-    print(paste(c, length(unique(data[, c(c)]))))
-  }
+  columns_to_flatten <- c ( "cmatc4")
+  flog.debug("Columns used to flatten from long to wide")
+  flog.debug(columns_to_flatten)
+  
   data <- flatten_long_to_wide(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data)
   
   #clean up column names to remove -, # white space, replaced with _
   colnames(data) <-clean_names( colnames(data))
   
-  print("Reshaped prior medication")
-  print(str(data, list.len = 999))
+  flog.debug("Reshaped prior medication")
+  flog.debug(str(data, list.len = 3000))
   
-  print("--- end clean_prior_medicals ----")
+  flog.info("End function clean_prior_medicals")
   return(data)
 }

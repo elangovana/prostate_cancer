@@ -6,6 +6,7 @@ setup_log <- function(outdir){
   con <- file(file.path(outdir,"runall.log"))
   sink(con, append=TRUE)
   sink(con, append=TRUE, type="message")
+  return(con)
 }
 
 setup_outdir <- function(outdir){
@@ -21,14 +22,17 @@ setup_outdir <- function(outdir){
 ## main
 out_dir ="./outdat_trainmode"
 
-sink()
 out_dir <- setup_outdir(out_dir)
-setup_log(out_dir)
+log_output <- setup_log(out_dir)
+
+library(futile.logger)
+flog.threshold(INFO)
+appender.file(log_output)
 
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 500
-test_count = 100
+count = 1200
+test_count = 400
 
 
 
@@ -70,44 +74,68 @@ test_mh <- MedHistory_training[MedHistory_training$RPT %in% rownames(test_ct), ]
 test_pm <- PriorMed_training [PriorMed_training $RPT %in% rownames(test_ct), ]
 test_vs <- VitalSign_training [VitalSign_training$RPT %in% rownames(test_ct), ]
 
+run_round1_pipeline <- function(){  
+  source("./ml_pipeline.R")
+  result <- ml_pipeline(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+  df_predicted <- result$df_predicted
+  
+  source("./score.R")
+  
+  
+  #RMSE test
+  rmse_test = score_q1b(df_predicted$LKADT_P,CoreTable_training[rownames(df_predicted), c("LKADT_P")], CoreTable_training[rownames(df_predicted), c("DEATH")])
+  #RMSE Train
+  train_predictions_ttl = result$model_ttl$fit$predicted
+  
+  rmse_train = score_q1b(train_predictions_ttl,CoreTable_training[names(train_predictions_ttl), c("LKADT_P")], CoreTable_training[names(train_predictions_ttl), c("DEATH")])
+  
+  #risk train
+  risk_score_global <- result$risk_score_global$train$fit
+  risk_score_12 <- result$risk_score_12$train$fit
+  risk_score_18 <- result$risk_score_18$train$fit
+  risk_score_24 <- result$risk_score_24$train$fit
+  risk_score_train <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
+  
+  
+  print("Global risk score on test: ")
+  risk_score_global <- result$risk_score_global$test$fit
+  risk_score_12 <- result$risk_score_12$test$fit
+  risk_score_18 <- result$risk_score_18$test$fit
+  risk_score_24 <- result$risk_score_24$test$fit
+  risk_score_test <- score_q1a(df_predicted[names(risk_score_global), c("LKADT_P")],df_predicted[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
+  
+  print("-----OUTPUT---")
+  #RMSE Comparitive output
+  print(paste("RMSE on test: ", rmse_test, "RMSE on train:",  rmse_train))
+  print("Global risk score on train: ")
+  risk_score_train
+  print("Global risk score on test: ")
+  risk_score_test
+}
+
+run_round2_pipeline<- function(){  
+  source("./ml_pipeline.R")
+  result <- ml_pipeline_part2(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                              test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+  df_predicted <- result$df_predicted
+  percentage_correct = (100 * length(which(df_predicted$DISCONT == as.factor(CoreTable_training[rownames(df_predicted), c("DISCONT")])))) / length(df_predicted$DISCONT)
+  print("Output")
+  print(paste("Percentage correct prediction for discontinued flag", percentage_correct, sep=" "))
+}
 
 
-source("./ml_pipeline.R")
-result <- ml_pipeline(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                      test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
-df_predicted <- result$df_predicted
+run_round3_pipeline <- function(){
+  source("./ml_pipeline.R")
+  result <- ml_pipeline_part3(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+                              test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+  df_predicted <- result$df_predicted
+  percentage_correct = (100 * length(which(df_predicted$ENDTRS_C == as.factor(CoreTable_training[rownames(df_predicted), c("ENDTRS_C")])))) / length(df_predicted$ENDTRS_C)
+  print("Output")
+  print(paste("Percentage correct prediction for discontinued reason", percentage_correct, sep=" "))
+}
 
-source("./score.R")
-
-
-#RMSE test
-rmse_test = score_q1b(df_predicted$LKADT_P,CoreTable_training[rownames(df_predicted), c("LKADT_P")], CoreTable_training[rownames(df_predicted), c("DEATH")])
-#RMSE Train
-train_predictions_ttl = result$model_ttl$fit$predicted
-
-rmse_train = score_q1b(train_predictions_ttl,CoreTable_training[names(train_predictions_ttl), c("LKADT_P")], CoreTable_training[names(train_predictions_ttl), c("DEATH")])
-
-#risk train
-risk_score_global <- result$risk_score_global$train$fit
-risk_score_12 <- result$risk_score_12$train$fit
-risk_score_18 <- result$risk_score_18$train$fit
-risk_score_24 <- result$risk_score_24$train$fit
-risk_score_train <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
-
-
-print("Global risk score on test: ")
-risk_score_global <- result$risk_score_global$test$fit
-risk_score_12 <- result$risk_score_12$test$fit
-risk_score_18 <- result$risk_score_18$test$fit
-risk_score_24 <- result$risk_score_24$test$fit
-risk_score_test <- score_q1a(df_predicted[names(risk_score_global), c("LKADT_P")],df_predicted[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
-
-print("-----OUTPUT---")
-#RMSE Comparitive output
-print(paste("RMSE on test: ", rmse_test, "RMSE on train:",  rmse_train))
-print("Global risk score on train: ")
-risk_score_train
-print("Global risk score on test: ")
-risk_score_test
-
+run_round1_pipeline()
+#run_round2_pipeline()
+#run_round3_pipeline()
 warnings()
