@@ -3,10 +3,18 @@ library(futile.logger)
 predict_timetolive <- function(subset_train, subset_test, dependent_variables, outdir){
   library("randomForest")
   flog.info("Begin function predict_timetolive")
-    
+  log_datastructure(subset_train, subset_test)
+  
   #run RF, use rough fix for missing values
   subset_train.roughfix <- na.roughfix(subset_train)
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 1000, mtree=200, importance=TRUE)
+  subset_test.roughfix <- na.roughfix(subset_test)  
+  #Make sure the factor levels in train and test are the same, else random forest cracks!!
+  datasets_aligned_factors <-  make_factors_alike(subset_train.roughfix, subset_test.roughfix)
+  subset_train.roughfix <- datasets_aligned_factors$train
+  subset_test.roughfix <- datasets_aligned_factors$test
+  log_datastructure(subset_train.roughfix, subset_test.roughfix)
+  
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 2000, mtry=25, importance=TRUE)
   print("random forest fit: ")
   print(fit)
   
@@ -18,9 +26,9 @@ predict_timetolive <- function(subset_train, subset_test, dependent_variables, o
   #set up predicted train as df
   train_predicted_df <- data.frame(fit$predicted)
   rownames(train_predicted_df) <- names(fit$predicted);
-  write.csv( merge(subset_train,train_predicted_df, by=0) , file=file.path(outdir, "timetolive_predictedtraining.csv"))
+  write.csv( merge(subset_train.roughfix,train_predicted_df, by=0) , file=file.path(outdir, "timetolive_predictedtraining.csv"))
   
-  subset_test.roughfix <- na.roughfix(subset_test)
+  
   predictions = predict(fit, subset_test.roughfix )  
   write.csv( predictions, file=file.path(outdir, "timetolive_predictedtest.csv"))
   write.csv( data.frame(RPT=names(predictions), TIMETOEVENT=predictions), file=file.path(outdir, "submission_1b.csv"), row.names=FALSE)
@@ -36,9 +44,16 @@ predict_death <- function(subset_train, subset_test, dependent_variables, outdir
   flog.info("Begin function predict_death")
   library("randomForest")
   
-  #Run RF
+  #run RF, use rough fix for missing values
   subset_train.roughfix <- na.roughfix(subset_train)
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$DEATH, ntree = 1000,  importance=TRUE)    
+  subset_test.roughfix <- na.roughfix(subset_test)  
+  #Make sure the factor levels in train and test are the same, else random forest cracks!!
+  datasets_aligned_factors <-  make_factors_alike(subset_train.roughfix, subset_test.roughfix)
+  subset_train.roughfix <- datasets_aligned_factors$train
+  subset_test.roughfix <- datasets_aligned_factors$test
+  
+  #Run RF
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$DEATH, ntree = 1000,   importance=TRUE)    
   write.csv( importance(fit) , file=file.path(outdir, "death_importanceFit.csv"))  
   print("random forest fit: ")
   print(fit)
@@ -50,10 +65,9 @@ predict_death <- function(subset_train, subset_test, dependent_variables, outdir
   #Write predicted train data
   train_predicted_df <- data.frame(fit$predicted)
   rownames(train_predicted_df) <- names(fit$predicted);
-  write.csv( merge(subset_train,train_predicted_df, by=0) , file=file.path(outdir, "death_predictedtraining.csv"))
+  write.csv( merge(subset_train.roughfix,train_predicted_df, by=0) , file=file.path(outdir, "death_predictedtraining.csv"))
   
   #run model on test
-  subset_test.roughfix <- na.roughfix(subset_test)
   predictions = predict(fit, subset_test.roughfix )
   write.csv( predictions, file=file.path(outdir, "death_predictedtest.csv"))
   
@@ -105,10 +119,12 @@ run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir
   })
   
   ##Obtain predictors for cox model.
-  predictor_rating<- importance(model_ttl$fit)[, "%IncMSE"]
+  imp_rf <- importance(model_ttl$fit)
+  predictor_rating<- imp_rf[imp_rf[, "%IncMSE"] > 0, "IncNodePurity"]
   predictor_rating <- sort(predictor_rating, decreasing = TRUE)
-  topn = ceiling(length(predictor_rating[which(predictor_rating>0)]) * .25) # only consider top 25%
-  flog.info("No of topN variables used for risk calculation : %s out of %s", topn, length(predictor_rating))  
+  topn = ceiling(length(predictor_rating) * .30) # only consider top n%
+  
+  flog.info("No of topN variables used for risk calculation : %s out of %s, out of full predictor %s", topn, length(predictor_rating), nrow(imp_rf))  
  
   formula = as.formula(paste("Surv(LKADT_P, EVENT)" , paste(names(predictor_rating[c(1:topn)]),collapse="+"), sep=" ~ "))
   flog.debug(formula)
@@ -176,11 +192,9 @@ predict_discontinuedreason <- function(subset_train, subset_test, dependent_vari
   
   flog.info("Running random forest")
   fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$ENDTRS_C, ntree = 1000,  mtry=30, importance=TRUE)
-  flog.info("Random forest fit")
-  flog.info("  ntree %s", fit$ntree)
-  flog.info("  mtry %s", fit$mtry)
-  flog.info(" Error rate:")
-  flog.info(fit$err.rate)
+  print("Random forest fit")
+  print(fit)
+ 
   write.csv( importance(fit) , file=file.path(outdir, "discontinuedreason_importanceFit.csv"))  
   
   

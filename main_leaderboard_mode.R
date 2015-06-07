@@ -1,8 +1,16 @@
+
 #set up logging
 setup_log <- function(outdir){
-  con <- file(file.path(outdir,"run.log"))
+  con <- file(file.path(outdir,"runall.log"))
   sink(con, append=TRUE)
   sink(con, append=TRUE, type="message")
+  
+  library(futile.logger)
+  appender.file(con)
+  #layout <- layout.format('[~l] [~t] [~n.~f] ~m')
+  #flog.layout(layout)
+  
+  return(con)
 }
 
 setup_outdir <- function(outdir){
@@ -20,11 +28,12 @@ out_dir = "./out_dat"
 sink()
 out_dir <- setup_outdir(out_dir)
 setup_log(out_dir)
+flog.threshold(INFO)
 
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
-count = 0
+count = 1050
 
 
 ####Download Train data#############
@@ -104,6 +113,8 @@ source("./score.R")
 #RMSE Train
 train_predictions_ttl = result$model_ttl$fit$predicted
 rmse_train = score_q1b(train_predictions_ttl,CoreTable_training[names(train_predictions_ttl), c("LKADT_P")], CoreTable_training[names(train_predictions_ttl), c("DEATH")])
+#RMSE Comparitive output
+print(paste( "RMSE on train:",  rmse_train))
 
 #risk train
 risk_score_global <- result$risk_score_global$train$fit
@@ -124,8 +135,7 @@ risk_score_test <- score_q1a(df_predicted[names(risk_score_global), c("LKADT_P")
 
 
 print("-----OUTPUT---")
-#RMSE Comparitive output
-print(paste( "RMSE on train:",  rmse_train))
+
 print("Global risk score on train: ")
 risk_score_train
 print("Global risk score on test: ")

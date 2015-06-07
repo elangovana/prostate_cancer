@@ -1,8 +1,29 @@
+
+save_rng <- function(savefile=tempfile()) {
+  if (exists(".Random.seed"))  {
+    oldseed <- get(".Random.seed", .GlobalEnv)
+  } else stop("don't know how to save before set.seed() or r*** call")
+  oldRNGkind <- RNGkind()
+  save("oldseed","oldRNGkind",file=savefile)
+  invisible(savefile)
+}
+
+most_frequent_factor <- function(x){
+  return( names(which.max(table(x))))
+}
+
+restore_rng <- function(savefile) {
+  load(savefile)
+  do.call("RNGkind",as.list(oldRNGkind))  ## must be first!
+  assign(".Random.seed", oldseed, .GlobalEnv)
+}
+
 convert_to_yes_no_factor <- function(dataset_df, col_name){
   dataset_df[, c(col_name)] <- as.factor(dataset_df[, c(col_name)] )
   levels(dataset_df[, c(col_name)] ) <- c("YES", "NO")
   return (dataset_df)
 }
+
 
 clean_names <- function(cols){
   result <- gsub("-|\\s+|#|\\(|\\)|\\/|,|'","_", cols)
@@ -27,9 +48,10 @@ clean_labels <- function (train_ct){
 merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
   ## Merge all med information from multiple datasets into one large wide dataset
   # merge train core table with lab value
-  df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+#   df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
+#   rownames(df_subset_merged) <- df_subset_merged$Row.names
+#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))  
+  df_subset_merged <-df_ct 
   
   #merge Lesion measure
   df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c(".ctlv", ".lm" ))
@@ -55,6 +77,50 @@ merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
   
   return(df_subset_merged)
   
+}
+
+make_factors_alike <- function(subset_train, subset_test){
+  library(futile.logger)
+  commonCols = Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
+  for(c in commonCols){
+    if(is.double(subset_train[, c(c)]) & is.integer(subset_test[, c(c)])){
+      subset_test[, c(c)] = as.double(subset_test[, c(c)])
+      message <- paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)]), ". hence converting int to double")
+      flog.debug(message)
+    }
+    if(is.integer(subset_train[, c(c)]) & is.double(subset_test[, c(c)])){
+      subset_train[, c(c)] = as.double(subset_train[, c(c)])
+      message <- paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)]), ". hence converting int to double")
+      flog.debug(message)
+    }
+    
+    if(is.factor(subset_train[, c(c)]) & is.atomic(subset_test[, c(c)])){
+      subset_test[, c(c)] = as.factor(subset_test[, c(c)])
+      message <- paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)]), ". hence converting int to double")
+      flog.debug(message)
+    }
+    
+    if (typeof(subset_train[, c(c)]) != typeof(subset_test[, c(c)])){
+      message <- paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)]))
+      flog.warn(message)
+      warning (message)     
+    }
+    
+    if (is.factor(subset_train[, c(c)])){
+      levels_in_test_and_train= Reduce(union, as.character(unique(subset_train[, c(c)])), as.character(unique(subset_test[, c(c)])))
+      levels_missing_in_test = setdiff(levels(subset_train[, c(c)]), levels(subset_test[, c(c)]))
+      levels_missing_in_train= setdiff(levels(subset_test[, c(c)]), levels(subset_train[, c(c)]))
+      
+      if (length(levels_missing_in_train) > 0){        
+        levels(subset_train[, c(c)]) <- c(levels(subset_train[, c(c)]), as.character(levels_missing_in_train))
+      }
+      if (length(levels_missing_in_test) > 0){       
+        levels(subset_test[, c(c)]) <- c(levels(subset_test[, c(c)]), as.character(levels_missing_in_test))
+      }   
+    }
+    
+  }
+  return(list(train = subset_train, test = subset_test))
 }
 
 align_test_train_data<- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
@@ -84,36 +150,19 @@ align_test_train_data<- function(train_ct, train_lv, train_lm, train_mh, train_p
   subset_train <- subset_train[, Reduce(union, commonCols, dependent_variables)]
   subset_test <- subset_test[, commonCols]
   
-  for(c in commonCols){
-    if (typeof(subset_train[, c(c)]) != typeof(subset_test[, c(c)])){
-      warning(paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)])))
-    }
-    
-    if (is.factor(subset_train[, c(c)])){
-      levels_in_test_and_train= Reduce(union, as.character(unique(subset_train[, c(c)])), as.character(unique(subset_test[, c(c)])))
-      levels_missing_in_test = setdiff(levels(subset_train[, c(c)]), levels(subset_test[, c(c)]))
-      levels_missing_in_train= setdiff(levels(subset_test[, c(c)]), levels(subset_train[, c(c)]))
-      
-      if (length(levels_missing_in_train) > 0){        
-        levels(subset_train[, c(c)]) <- c(levels(subset_train[, c(c)]), as.character(levels_missing_in_train))
-      }
-      if (length(levels_missing_in_test) > 0){       
-        levels(subset_test[, c(c)]) <- c(levels(subset_test[, c(c)]), as.character(levels_missing_in_test))
-      }   
-    }
-    
-  }
   
-  
-  flog.info("TRAIN DATA SET STRUCTURE AFTER CLEAN UP")
-  flog.info(str(subset_train,list.len = 2999 ))
-  flog.info("TEST DATA SET STRUCTURE AFTER CLEAN UP")
-  flog.info(str(subset_test,list.len = 2999 ))
-  
-  return(list(train =subset_train, test= subset_test, dependent_variables = dependent_variables))
+  datasets_aligned_factors <-  make_factors_alike(subset_train, subset_test)
+  return(list(train =datasets_aligned_factors$train, test=datasets_aligned_factors$test, dependent_variables = dependent_variables))
 }
 
-
+log_datastructure <- function(subset_train, subset_test){
+  print("TRAIN DATA SET STRUCTURE AFTER CLEAN UP")
+  flog.info(str(subset_train,list.len = 2999 ))
+  print(dim(subset_train))
+  print("TEST DATA SET STRUCTURE AFTER CLEAN UP")
+  flog.info(str(subset_test,list.len = 2999 ))
+  print(dim(subset_test))
+}
 
 remove_duplicated_record <- function(data, cols){
   library(futile.logger)
@@ -603,16 +652,48 @@ clean_lesionmeasure_data <- function(labmeasure_data){
   }
   
   #cast long to wide
-  #DOMAIN + STUDYID + 
-  labvalue_result <- dcast(labmeasure_data,  RPT ~ LSTEST + LSLOC, value.var="LSSTRESN" , fun.aggregate = mean)
   
-  
+  # This data set contains lesion measure length, & just presence indicator (Yes, no), need to hence split them out
+  # handle lesion length first
+  labmeasure_data_lmlengthOnly <- labmeasure_data[as.character(labmeasure_data$LSTESTCD ) == "LENGTH" ,]
+  flog.info("Obtaining lesion measure for LSTESTCD LENGTH, found %s records", nrow(labmeasure_data_lmlengthOnly))
+  if (nrow(labmeasure_data_lmlengthOnly) ==0){
+    message = "No records with LSTESTCD PRESENCE found!!"
+    flog.warn(message)
+    warning(message)
+  }
+  labvalue_result <- dcast(labmeasure_data_lmlengthOnly,  RPT ~ LSLOC, value.var="LSSTRESN" , fun.aggregate = mean)
   #assign correct rownames and remove row name column
   rownames(labvalue_result) <- labvalue_result$RPT  
   labvalue_result <- subset(labvalue_result, select=-c(RPT))
+  labvalue_result[is.na(labvalue_result)] <- 0.0
   
-  
-  
+  # handle presence
+  labmeasure_data_lmstatus <- labmeasure_data[as.character(labmeasure_data$LSTESTCD ) == "PRESENCE",]
+  flog.info("Obtaining lesion measure for LSTESTCD PRESENCE, found %s records", nrow(labmeasure_data_lmstatus))
+  if (nrow(labmeasure_data_lmstatus) ==0){
+    message = "No records with LSTESTCD PRESENCE found!!"
+    flog.warn(message)
+    warning(message)
+  }
+  labmeasure_data_lmstatus <- dcast(labmeasure_data_lmstatus,  RPT ~ LSLOC, value.var="LSSTRESC" , fun.aggregate = most_frequent_factor) 
+  #assign correct rownames and remove row name column
+  rownames(labmeasure_data_lmstatus) <- labmeasure_data_lmstatus$RPT  
+  labmeasure_data_lmstatus <- subset(labmeasure_data_lmstatus, select=-c(RPT))
+  labmeasure_data_lmstatus[is.na(labmeasure_data_lmstatus)] <- "NO"
+  for(col in colnames(labmeasure_data_lmstatus)){
+    if (is.character(labmeasure_data_lmstatus[, col])){
+      labmeasure_data_lmstatus[ which(labmeasure_data_lmstatus[, col]==""), col] <- "NO"
+      labmeasure_data_lmstatus[, col] <- as.factor(labmeasure_data_lmstatus[, col])
+    }
+  }
+    
+  #merge lm status and lab value measure length
+  labvalue_result <- merge(labvalue_result, labmeasure_data_lmstatus, all=TRUE, by=0, suffixes=c("_LENGTH","_PRESENCE"))
+  #assign correct rownames and remove row name column
+  rownames(labvalue_result) <- labvalue_result$Row.names  
+  labvalue_result <- subset(labvalue_result, select=-c(Row.names))
+ 
   
   #clean up column names to remove -, # white space, replaced with _
   colnames(labvalue_result) <-clean_names( colnames(labvalue_result))

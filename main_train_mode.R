@@ -9,8 +9,8 @@ setup_log <- function(outdir){
 
   library(futile.logger)
   appender.file(con)
-  layout <- layout.format('[~l] [~t] [~n.~f] ~m')
-  flog.layout(layout)
+  #layout <- layout.format('[~l] [~t] [~n.~f] ~m')
+  #flog.layout(layout)
   
   return(con)
 }
@@ -35,8 +35,8 @@ flog.threshold(INFO)
 
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 1200
-test_count = 400
+count = 100
+test_count = 20
 
 
 
@@ -90,9 +90,15 @@ run_round1_pipeline <- function(){
   #RMSE test
   rmse_test = score_q1b(df_predicted$LKADT_P,CoreTable_training[rownames(df_predicted), c("LKADT_P")], CoreTable_training[rownames(df_predicted), c("DEATH")])
   #RMSE Train
-  train_predictions_ttl = result$model_ttl$fit$predicted
-  
+  train_predictions_ttl = result$model_ttl$fit$predicted  
   rmse_train = score_q1b(train_predictions_ttl,CoreTable_training[names(train_predictions_ttl), c("LKADT_P")], CoreTable_training[names(train_predictions_ttl), c("DEATH")])
+  
+  source("./translate_data.R")
+  cleaned_train = clean_labels(CoreTable_training[rownames(df_predicted), ])
+  percentage_correct_death = (100 * length(which(as.character(df_predicted$DEATH)== as.character(cleaned_train[rownames(df_predicted), c("DEATH")])))) / length(df_predicted$DEATH)
+  
+   
+  print(paste("RMSE on test: ", rmse_test, "RMSE on train:",  rmse_train, "% predicted corect death ", percentage_correct_death))
   
   #risk train
   risk_score_global <- result$risk_score_global$train$fit
@@ -102,20 +108,21 @@ run_round1_pipeline <- function(){
   risk_score_train <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
   
   
-  print("Global risk score on test: ")
+  
   risk_score_global <- result$risk_score_global$test$fit
   risk_score_12 <- result$risk_score_12$test$fit
   risk_score_18 <- result$risk_score_18$test$fit
   risk_score_24 <- result$risk_score_24$test$fit
+ 
   risk_score_test <- score_q1a(df_predicted[names(risk_score_global), c("LKADT_P")],df_predicted[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
   
   print("-----OUTPUT---")
   #RMSE Comparitive output
-  print(paste("RMSE on test: ", rmse_test, "RMSE on train:",  rmse_train))
+  print(paste("RMSE on test: ", rmse_test, "RMSE on train:",  rmse_train, "% predicted corect death ", percentage_correct_death))
   print("Global risk score on train: ")
-  risk_score_train
+  print(risk_score_train)
   print("Global risk score on test: ")
-  risk_score_test
+  print(risk_score_test)
 }
 
 run_round2_pipeline<- function(){  
