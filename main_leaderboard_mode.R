@@ -33,7 +33,7 @@ flog.threshold(INFO)
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
-count = 1050
+count = 1000
 
 
 ####Download Train data#############

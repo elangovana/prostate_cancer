@@ -34,6 +34,8 @@ ml_pipeline <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_
   df_predicted_ttl <- as.data.frame(model_ttl$predictions, row.names=names(model_ttl$predictions))
   colnames(df_predicted_ttl) <- c("LKADT_P")
   
+  #predict_ttl_lasso(subset_train, subset_test,dependent_variables, out_dir)
+  
   model_death <- predict_death(subset_train, subset_test, dependent_variables, out_dir)
   df_predicted_death <- as.data.frame(model_death$predictions, row.names=names(model_death$predictions))
   colnames(df_predicted_death) <- c("DEATH")

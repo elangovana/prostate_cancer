@@ -1,5 +1,5 @@
 ##########
-
+library(futile.logger)
 
 #set up logging
 setup_log <- function(outdir){
@@ -7,7 +7,7 @@ setup_log <- function(outdir){
   sink(con, append=TRUE)
   sink(con, append=TRUE, type="message")
 
-  library(futile.logger)
+  
   appender.file(con)
   #layout <- layout.format('[~l] [~t] [~n.~f] ~m')
   #flog.layout(layout)
@@ -29,14 +29,14 @@ setup_outdir <- function(outdir){
 out_dir ="./outdat_trainmode"
 out_dir <- setup_outdir(out_dir)
 
-#sink()
-setup_log(out_dir)
+sink()
+#setup_log(out_dir)
 flog.threshold(INFO)
 
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 100
-test_count = 20
+count = 1000
+test_count = 300
 
 
 

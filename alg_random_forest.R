@@ -14,7 +14,7 @@ predict_timetolive <- function(subset_train, subset_test, dependent_variables, o
   subset_test.roughfix <- datasets_aligned_factors$test
   log_datastructure(subset_train.roughfix, subset_test.roughfix)
   
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 2000, mtry=25, importance=TRUE)
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 500, mtry=15, importance=TRUE)
   print("random forest fit: ")
   print(fit)
   
@@ -39,6 +39,55 @@ predict_timetolive <- function(subset_train, subset_test, dependent_variables, o
   
 }
 
+predict_ttl_lasso <- function(subset_train, subset_test, dependent_variables, outdir){
+  
+  #run RF, use rough fix for missing values
+  subset_train.roughfix <- na.roughfix(subset_train)
+  subset_test.roughfix <- na.roughfix(subset_test)  
+  
+  nums <- sapply(subset_train.roughfix, is.numeric)
+  subset_train.roughfix <- subset_train.roughfix[ , nums]
+  
+  nums <- sapply(subset_test.roughfix, is.numeric)
+  subset_test.roughfix <- subset_test.roughfix[ , nums]
+  
+  library(fastcox)
+  x <- as.matrix(subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables])
+  y= as.matrix(subset_train$LKADT_P)
+  d=ifelse(as.character(subset_train$DEATH)=="YES",1,0)
+  
+  fit<-cocktail(x=x,y=y,d=d, alpha=0.5)
+ 
+  print("random forest fit: ")
+  print(fit)
+  
+   
+  rmse = sqrt( sum( (subset_train$LKADT_P - fit$predicted)^2 , na.rm = TRUE ) / nrow(subset_train) )  
+  print(paste ("RMSE:", rmse, sep=" "))
+  
+  #Write predicted train output 
+  #set up predicted train as df
+  train_predicted_df <- data.frame(fit$predicted)
+  rownames(train_predicted_df) <- names(fit$predicted);
+  write.csv( merge(subset_train.roughfix,train_predicted_df, by=0) , file=file.path(outdir, "lass_cox_timetolive_predictedtraining.csv"))
+  
+  
+  predictions = predict(fit, as.matrix(subset_test.roughfix), type="link" ) 
+  print("Fit predicted")
+  print(fit$predicted)
+  
+  print("test predicted")
+  print(predictions)
+  
+  write.csv( predictions, file=file.path(outdir, "timetolive_predictedtest.csv"))
+  write.csv( data.frame(RPT=names(predictions), TIMETOEVENT=predictions), file=file.path(outdir, "lass_cox_submission_1b.csv"), row.names=FALSE)
+  
+  ##Return model
+  flog.info("End function predict_timetolive")
+  return(list(predictions=predictions, fit=fit, train=subset_train.roughfix, test=subset_test.roughfix ))
+  
+}
+
 predict_death <- function(subset_train, subset_test, dependent_variables, outdir){
   
   flog.info("Begin function predict_death")
@@ -53,7 +102,7 @@ predict_death <- function(subset_train, subset_test, dependent_variables, outdir
   subset_test.roughfix <- datasets_aligned_factors$test
   
   #Run RF
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$DEATH, ntree = 1000,   importance=TRUE)    
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$DEATH, ntree = 500,   importance=TRUE)    
   write.csv( importance(fit) , file=file.path(outdir, "death_importanceFit.csv"))  
   print("random forest fit: ")
   print(fit)
@@ -122,7 +171,7 @@ run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir
   imp_rf <- importance(model_ttl$fit)
   predictor_rating<- imp_rf[imp_rf[, "%IncMSE"] > 0, "IncNodePurity"]
   predictor_rating <- sort(predictor_rating, decreasing = TRUE)
-  topn = ceiling(length(predictor_rating) * .30) # only consider top n%
+  topn = ceiling(length(predictor_rating) * .70) # only consider top n%
   
   flog.info("No of topN variables used for risk calculation : %s out of %s, out of full predictor %s", topn, length(predictor_rating), nrow(imp_rf))  
  

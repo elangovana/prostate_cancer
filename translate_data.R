@@ -48,31 +48,33 @@ clean_labels <- function (train_ct){
 merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
   ## Merge all med information from multiple datasets into one large wide dataset
   # merge train core table with lab value
-#   df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
-#   rownames(df_subset_merged) <- df_subset_merged$Row.names
-#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))  
-  df_subset_merged <-df_ct 
+   #df_ct <- df_ct[,  c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC")]
+   df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
+   rownames(df_subset_merged) <- df_subset_merged$Row.names
+   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))    
+  # df_subset_merged <- df_ct[, c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC","PSA", "HB", "BONE", "ALB", "ALP", "LDH", "LYMPH_NODES", "ECOG_C", "ANALGESICS", "GLUCOCORTICOID", "ESTROGENS", "TESTO")]
+ 
   
   #merge Lesion measure
-  df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c(".ctlv", ".lm" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
+#   df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c(".ctlv", ".lm" ))
+#   rownames(df_subset_merged) <- df_subset_merged$Row.names
+#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+#   
   #merge medical history
-  df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c(".ctlvlm", ".mh" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
+#   df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c(".ctlvlm", ".mh" ))
+#   rownames(df_subset_merged) <- df_subset_merged$Row.names
+#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+#   
   #merge vital signs
-  df_subset_merged <- merge(df_subset_merged, df_vs, by=0, all.x=TRUE, suffixes= c(".ctlvlmmh", ".vs" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
+#   df_subset_merged <- merge(df_subset_merged, df_vs, by=0, all.x=TRUE, suffixes= c(".ctlvlmmh", ".vs" ))
+#   rownames(df_subset_merged) <- df_subset_merged$Row.names
+#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+#   
   
   #merge prior medications
-  df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  #df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
+  #rownames(df_subset_merged) <- df_subset_merged$Row.names
+  #df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
   
   
   return(df_subset_merged)
