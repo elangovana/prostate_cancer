@@ -9,7 +9,9 @@ save_rng <- function(savefile=tempfile()) {
 }
 
 most_frequent_factor <- function(x){
-  return( names(which.max(table(x))))
+  if (length(x) == 0) return(("-"))
+  result <- names(which.max(table(x)))
+  return( result)
 }
 
 restore_rng <- function(savefile) {
@@ -32,18 +34,47 @@ clean_names <- function(cols){
   result <- gsub("_$","", result)  
   return (result)
 }
+
+calc_death_in_days <- function(time_period_in_days, row){
+  
+  #if censored no event
+  if (row["DEATH"] == "CENSORED"){
+    return("CENSORED")
+  }
+  # for time agnostic calc, the event occurs for if not cenceored
+  if (time_period_in_days <= 0){
+    return("YES")
+  }
+  ##the event has occurred
+  #If the number of months less than time period, even has occurred
+  if ( as.numeric(row["LKADT_P"]) <= time_period_in_days){
+    return("YES")
+  }
+  #no event
+  return ("CENSORED")
+}
+
 clean_labels <- function (train_ct){
   #Death
   train_ct$DEATH <- as.factor(train_ct$DEATH)
   levels(train_ct$DEATH) <- c("YES", "CENSORED")
-  train_ct$DEATH[is.na( train_ct$DEATH)] <- "CENSORED"   
-  
+  train_ct$DEATH[is.na( train_ct$DEATH)] <- "CENSORED" 
+ 
   #Discont
   train_ct$DISCONT <- as.factor(train_ct$DISCONT)
   
   return(train_ct)
 }
 
+add_label_death_within_days <- function(data, death_in_days, column_name){
+  
+  data[, column_name] <- apply(data, 1, function(x){
+    calc_death_in_days(death_in_days, x)
+  })
+  data[, column_name] <- as.factor(data[, column_name])
+  
+  return(data)
+}
 
 merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
   ## Merge all med information from multiple datasets into one large wide dataset
@@ -52,30 +83,30 @@ merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
    df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
    rownames(df_subset_merged) <- df_subset_merged$Row.names
    df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))    
-  # df_subset_merged <- df_ct[, c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC","PSA", "HB", "BONE", "ALB", "ALP", "LDH", "LYMPH_NODES", "ECOG_C", "ANALGESICS", "GLUCOCORTICOID", "ESTROGENS", "TESTO")]
- 
+   #df_subset_merged <- df_ct[, c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC","PSA", "HB", "BONE", "ALB", "ALP", "LDH", "LYMPH_NODES", "ECOG_C", "ANALGESICS", "GLUCOCORTICOID", "ESTROGENS", "TESTO")]
+   #df_subset_merged<-df_ct
   
   #merge Lesion measure
-#   df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c(".ctlv", ".lm" ))
-#   rownames(df_subset_merged) <- df_subset_merged$Row.names
-#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-#   
-  #merge medical history
+  df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c(".ctlv", ".lm" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+# #   #merge medical history
 #   df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c(".ctlvlm", ".mh" ))
 #   rownames(df_subset_merged) <- df_subset_merged$Row.names
 #   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-#   
-  #merge vital signs
+# #   
+# #   #merge vital signs
 #   df_subset_merged <- merge(df_subset_merged, df_vs, by=0, all.x=TRUE, suffixes= c(".ctlvlmmh", ".vs" ))
 #   rownames(df_subset_merged) <- df_subset_merged$Row.names
 #   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
 #   
-  
-  #merge prior medications
-  #df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
-  #rownames(df_subset_merged) <- df_subset_merged$Row.names
-  #df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
+# #   
+# #   #merge prior medications
+#   df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
+#   rownames(df_subset_merged) <- df_subset_merged$Row.names
+#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+#   
   
   return(df_subset_merged)
   
@@ -84,6 +115,7 @@ merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
 make_factors_alike <- function(subset_train, subset_test){
   library(futile.logger)
   commonCols = Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
+  columns_to_remove =c()
   for(c in commonCols){
     if(is.double(subset_train[, c(c)]) & is.integer(subset_test[, c(c)])){
       subset_test[, c(c)] = as.double(subset_test[, c(c)])
@@ -105,7 +137,9 @@ make_factors_alike <- function(subset_train, subset_test){
     if (typeof(subset_train[, c(c)]) != typeof(subset_test[, c(c)])){
       message <- paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)]))
       flog.warn(message)
-      warning (message)     
+      columns_to_remove = c(columns_to_remove, c)
+      warning (message)   
+      next
     }
     
     if (is.factor(subset_train[, c(c)])){
@@ -121,8 +155,18 @@ make_factors_alike <- function(subset_train, subset_test){
       }   
     }
     
+  }#end of loop for each column
+  if (length(columns_to_remove) >0 ){
+    flog.warn("Removing columns due to type mismatch %s", columns_to_remove)
+    subset_test <- subset_test[, !colnames(subset_test) %in% columns_to_remove]
+    subset_train <- subset_train[, !colnames(subset_train) %in% columns_to_remove]
   }
+  
   return(list(train = subset_train, test = subset_test))
+}
+
+dependent_variables<- function(){
+  return( c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC"))
 }
 
 align_test_train_data<- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
@@ -131,7 +175,7 @@ align_test_train_data<- function(train_ct, train_lv, train_lm, train_mh, train_p
   #remove other labels, except for the label LKADT_P that is predicted, from the train set  
   subset_train_ct <- train_ct
   
-  dependent_variables = c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC")
+  dependent_variables = dependent_variables()
   
   
   subset_train <- merge_all_data(subset_train_ct, train_lv, train_lm, train_mh, train_pm, train_vs)
@@ -236,7 +280,7 @@ flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWid
       df_flattened_so_far <- df_temp
     }else {
       #merge newly casted df and the previous df 
-      df_flattened_so_far <- merge(df_flattened_so_far, df_temp, by=0, all.x=TRUE, suffixes=c("", paste("_", c, sep="" ) ))
+      df_flattened_so_far <- merge(df_flattened_so_far, df_temp, by=0, all.x=TRUE, suffixes=c("_prev", paste("_", c, sep="" ) ))
       flog.trace(str(df_flattened_so_far,  list.len = 999))
       #assign correct rownames and remove row name column
       rownames(df_flattened_so_far) <- df_flattened_so_far$Row.names  
@@ -677,18 +721,23 @@ clean_lesionmeasure_data <- function(labmeasure_data){
     message = "No records with LSTESTCD PRESENCE found!!"
     flog.warn(message)
     warning(message)
+    labmeasure_data_lmstatus <- data.frame()
   }
-  labmeasure_data_lmstatus <- dcast(labmeasure_data_lmstatus,  RPT ~ LSLOC, value.var="LSSTRESC" , fun.aggregate = most_frequent_factor) 
-  #assign correct rownames and remove row name column
-  rownames(labmeasure_data_lmstatus) <- labmeasure_data_lmstatus$RPT  
-  labmeasure_data_lmstatus <- subset(labmeasure_data_lmstatus, select=-c(RPT))
-  labmeasure_data_lmstatus[is.na(labmeasure_data_lmstatus)] <- "NO"
-  for(col in colnames(labmeasure_data_lmstatus)){
-    if (is.character(labmeasure_data_lmstatus[, col])){
-      labmeasure_data_lmstatus[ which(labmeasure_data_lmstatus[, col]==""), col] <- "NO"
-      labmeasure_data_lmstatus[, col] <- as.factor(labmeasure_data_lmstatus[, col])
+  else{
+    labmeasure_data_lmstatus <- dcast(labmeasure_data_lmstatus,  RPT ~ LSLOC, value.var="LSSTRESC" , fun.aggregate = most_frequent_factor) 
+    #assign correct rownames and remove row name column
+    rownames(labmeasure_data_lmstatus) <- labmeasure_data_lmstatus$RPT  
+    labmeasure_data_lmstatus <- subset(labmeasure_data_lmstatus, select=-c(RPT))
+    labmeasure_data_lmstatus[is.na(labmeasure_data_lmstatus)] <- "NO"
+    for(col in colnames(labmeasure_data_lmstatus)){
+      if (is.character(labmeasure_data_lmstatus[, col])){
+        labmeasure_data_lmstatus[ which(labmeasure_data_lmstatus[, col]==""), col] <- "NO"
+        labmeasure_data_lmstatus[, col] <- as.factor(labmeasure_data_lmstatus[, col])
+      }
     }
+    
   }
+ 
     
   #merge lm status and lab value measure length
   labvalue_result <- merge(labvalue_result, labmeasure_data_lmstatus, all=TRUE, by=0, suffixes=c("_LENGTH","_PRESENCE"))

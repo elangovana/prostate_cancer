@@ -33,8 +33,9 @@ flog.threshold(INFO)
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
-count = 1000
-
+count = 0
+#rows_in_train is only used when count > 0 
+rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
 
 ####Download Train data#############
 
@@ -82,7 +83,7 @@ VitalSign_test <- read.csv(VitalSign_synapse_entity, header=T, na.strings=c(".",
 
 ## if count > 0, work only on a subset of training data
 if (count > 0) {
-  train_ct <- CoreTable_training[c(1:count), ]
+  train_ct <- CoreTable_training[rows_in_train, ]
 } else {
   train_ct <- CoreTable_training
 }

@@ -30,16 +30,21 @@ out_dir ="./outdat_trainmode"
 out_dir <- setup_outdir(out_dir)
 
 sink()
-#setup_log(out_dir)
+setup_log(out_dir)
 flog.threshold(INFO)
 
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 count = 1000
-test_count = 300
+gap_count = 0
+test_count = 200
 
-
-
+#rows_in_train = c(1100:1300,1401:1600)
+rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
+rows_in_test = c(201:300,701:800,1301:1400)
+#rows_in_test = c(1301:1400)
+#rows_in_train = c(1:200)
+#rows_in_test = c(201:300)
 
 ####Download data#############
 
@@ -64,14 +69,14 @@ VitalSign_training <- read.csv(VitalSign_synapse_entity, header=T, na.strings=c(
 ##
 
 ## Split training data into training and test
-train_ct <- CoreTable_training[c(1:count), ]
+train_ct <- CoreTable_training[rows_in_train, ]
 train_lv <- LabValue_training[LabValue_training$RPT %in% rownames(train_ct), ]
 train_lm <- LesionMeasure_training[LesionMeasure_training$RPT %in% rownames(train_ct), ]
 train_mh <- MedHistory_training[MedHistory_training$RPT %in% rownames(train_ct), ]
 train_pm <- PriorMed_training [PriorMed_training $RPT %in% rownames(train_ct), ]
 train_vs <- VitalSign_training [VitalSign_training$RPT %in% rownames(train_ct), ]
 
-test_ct <- CoreTable_training[c(count+1:test_count), !colnames(CoreTable_training) %in% c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC") ]
+test_ct <- CoreTable_training[rows_in_test, !colnames(CoreTable_training) %in% c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC") ]
 test_lv <- LabValue_training[LabValue_training$RPT %in%  rownames(test_ct), ]
 test_lm <- LesionMeasure_training[LesionMeasure_training$RPT %in% rownames(test_ct), ]
 test_mh <- MedHistory_training[MedHistory_training$RPT %in% rownames(test_ct), ]
@@ -92,7 +97,7 @@ run_round1_pipeline <- function(){
   #RMSE Train
   train_predictions_ttl = result$model_ttl$fit$predicted  
   rmse_train = score_q1b(train_predictions_ttl,CoreTable_training[names(train_predictions_ttl), c("LKADT_P")], CoreTable_training[names(train_predictions_ttl), c("DEATH")])
-  
+  write.csv(data.frame(names=names(train_predictions_ttl), actual=CoreTable_training[names(train_predictions_ttl), c("LKADT_P")], prdicted=train_predictions_ttl), file=file.path(out_dir, "predicted_vs_actual_ttl.csv"))
   source("./translate_data.R")
   cleaned_train = clean_labels(CoreTable_training[rownames(df_predicted), ])
   percentage_correct_death = (100 * length(which(as.character(df_predicted$DEATH)== as.character(cleaned_train[rownames(df_predicted), c("DEATH")])))) / length(df_predicted$DEATH)
@@ -114,7 +119,7 @@ run_round1_pipeline <- function(){
   risk_score_18 <- result$risk_score_18$test$fit
   risk_score_24 <- result$risk_score_24$test$fit
  
-  risk_score_test <- score_q1a(df_predicted[names(risk_score_global), c("LKADT_P")],df_predicted[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
+  risk_score_test <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
   
   print("-----OUTPUT---")
   #RMSE Comparitive output
