@@ -76,7 +76,7 @@ add_label_death_within_days <- function(data, death_in_days, column_name){
   return(data)
 }
 
-merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
+merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs, outdir){
   ## Merge all med information from multiple datasets into one large wide dataset
   # merge train core table with lab value
    #df_ct <- df_ct[,  c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC")]
@@ -91,22 +91,22 @@ merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs){
   rownames(df_subset_merged) <- df_subset_merged$Row.names
   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
   
-# #   #merge medical history
-#   df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c(".ctlvlm", ".mh" ))
-#   rownames(df_subset_merged) <- df_subset_merged$Row.names
-#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-# #   
-# #   #merge vital signs
-#   df_subset_merged <- merge(df_subset_merged, df_vs, by=0, all.x=TRUE, suffixes= c(".ctlvlmmh", ".vs" ))
-#   rownames(df_subset_merged) <- df_subset_merged$Row.names
-#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+#   #merge medical history
+  df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c(".ctlvlm", ".mh" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
 #   
-# #   
-# #   #merge prior medications
-#   df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
-#   rownames(df_subset_merged) <- df_subset_merged$Row.names
-#   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+#   #merge vital signs
+  df_subset_merged <- merge(df_subset_merged, df_vs, by=0, all.x=TRUE, suffixes= c(".ctlvlmmh", ".vs" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
 #   
+#   #merge prior medications
+  df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
   
   return(df_subset_merged)
   
@@ -169,7 +169,48 @@ dependent_variables<- function(){
   return( c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC"))
 }
 
-align_test_train_data<- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+remove_all_na_columns <- function(mydataframe){
+ 
+  bad <- sapply(mydataframe, function(x) {    
+    all(is.na(x))
+    })
+  
+  flog.info("Removing columns with all NA %s",  colnames(mydataframe[,bad]))
+  return( mydataframe[,!bad])
+}
+
+remove_all_nan_columns <- function(mydataframe){
+  bad <- sapply(mydataframe, function(x) {all(is.nan(x))})
+  flog.info("Removing columns with all NAN %s",  colnames(mydataframe[,bad]))
+
+  return( mydataframe[,!bad])
+}
+
+align_test_train_data<- function(train, test, outdir){
+  library(futile.logger)
+   
+  subset_train <- train  
+  dependent_variables = dependent_variables()
+  subset_test <- test[, !colnames(test) %in% c("DOMAIN" , "STUDYID")]
+  
+  #remove columns with all NA
+  subset_train <-remove_all_nan_columns( remove_all_na_columns(subset_train))
+  subset_test <- remove_all_nan_columns(remove_all_na_columns(subset_test))
+  
+  #retain only columns common to both test and train
+  commonCols <- Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
+  commonCols  <- commonCols[!commonCols %in% c("DOMAIN", "STUDYID")]
+  subset_train <- subset_train[, Reduce(union, commonCols, dependent_variables)]
+  subset_test <- subset_test[, commonCols]
+  
+  
+  datasets_aligned_factors <-  make_factors_alike(subset_train, subset_test)
+  
+   
+  return(list(train = datasets_aligned_factors$train, test=datasets_aligned_factors$test, dependent_variables = dependent_variables))
+}
+
+align_test_train_data_old<- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
                                  test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
   library(futile.logger)
   #remove other labels, except for the label LKADT_P that is predicted, from the train set  
@@ -184,10 +225,9 @@ align_test_train_data<- function(train_ct, train_lv, train_lm, train_mh, train_p
   subset_test <- merge_all_data(subset_test, test_lv, test_lm, test_mh, test_pm, test_vs)
   
   
-  
   #remove columns with all NA
-  subset_train <- subset_train[,colSums(is.na(subset_train))<nrow(subset_train)]
-  subset_test <- subset_test[, colSums(is.na(subset_test))<nrow(subset_test)]
+  subset_train <-remove_all_nan_columns( remove_all_na_columns(subset_train))
+  subset_test <- remove_all_nan_columns(remove_all_na_columns(subset_test))
   
   #retain only columns common to both test and train
   commonCols <- Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
@@ -198,15 +238,19 @@ align_test_train_data<- function(train_ct, train_lv, train_lm, train_mh, train_p
   
   
   datasets_aligned_factors <-  make_factors_alike(subset_train, subset_test)
-  return(list(train =datasets_aligned_factors$train, test=datasets_aligned_factors$test, dependent_variables = dependent_variables))
+  #remove columns with all NA
+  subset_train <-remove_all_nan_columns( remove_all_na_columns(datasets_aligned_factors$train))
+  subset_test <- remove_all_nan_columns(remove_all_na_columns(datasets_aligned_factors$test))
+  
+  return(list(train = subset_train, test=subset_test, dependent_variables = dependent_variables))
 }
 
 log_datastructure <- function(subset_train, subset_test){
   print("TRAIN DATA SET STRUCTURE AFTER CLEAN UP")
-  flog.info(str(subset_train,list.len = 2999 ))
+  flog.debug(str(subset_train,list.len = 2999 ))
   print(dim(subset_train))
   print("TEST DATA SET STRUCTURE AFTER CLEAN UP")
-  flog.info(str(subset_test,list.len = 2999 ))
+  flog.debug(str(subset_test,list.len = 2999 ))
   print(dim(subset_test))
 }
 
@@ -280,13 +324,14 @@ flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWid
       df_flattened_so_far <- df_temp
     }else {
       #merge newly casted df and the previous df 
-      df_flattened_so_far <- merge(df_flattened_so_far, df_temp, by=0, all.x=TRUE, suffixes=c("_prev", paste("_", c, sep="" ) ))
+      df_flattened_so_far <- merge(df_flattened_so_far, df_temp, by=0, all.x=TRUE, suffixes=c(paste("_", previous_col, sep=""), paste("_", c, sep="" ) ))
       flog.trace(str(df_flattened_so_far,  list.len = 999))
       #assign correct rownames and remove row name column
       rownames(df_flattened_so_far) <- df_flattened_so_far$Row.names  
       df_flattened_so_far <- subset(df_flattened_so_far, select=-c(Row.names)) 
+      
     }
-    
+    previous_col=c
    
   }
   
@@ -669,7 +714,7 @@ clean_labvalue_data <- function(labvalue_data){
   #   }
   
   #cast long to wide
-  labvalue_result <- dcast(labvalue_result,  DOMAIN + STUDYID + RPT ~ LBTESTCD, value.var="LBSTRESN" , fun.aggregate = mean)
+  labvalue_result <- dcast(labvalue_result,   RPT ~ LBTESTCD, value.var="LBSTRESN" , fun.aggregate = mean)
   
   #assign correct rownames and remove row name column
   rownames(labvalue_result) <- labvalue_result$RPT  

@@ -20,9 +20,9 @@ score_q1a<-function(time, death, riskScoreGlobal, riskScore12, riskScore18, risk
   death <- sapply(death,  function(d){
     if(is.na(d)) return(FALSE)
     if (d == as.character("YES")){
-      return(TRUE)
+      return(1)
     }
-    return(FALSE)
+    return(0)
   })
   if (missing(riskScore12)) {
     riskScore12 <- riskScoreGlobal

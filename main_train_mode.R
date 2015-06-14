@@ -1,6 +1,10 @@
 ##########
 library(futile.logger)
 
+set_options <- function(){
+  options(warning.length = 5000)
+  options(warn =1)
+}
 #set up logging
 setup_log <- function(outdir){
   con <- file(file.path(outdir,"runall.log"))
@@ -32,19 +36,19 @@ out_dir <- setup_outdir(out_dir)
 sink()
 setup_log(out_dir)
 flog.threshold(INFO)
+set_options()
 
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
-count = 1000
-gap_count = 0
-test_count = 200
+
 
 #rows_in_train = c(1100:1300,1401:1600)
-rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
+#rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
+rows_in_train = c(1:200, 301:700, 801:1000)
 rows_in_test = c(201:300,701:800,1301:1400)
 #rows_in_test = c(1301:1400)
 #rows_in_train = c(1:200)
-#rows_in_test = c(201:300)
+rows_in_test = c(201:300)
 
 ####Download data#############
 
@@ -106,18 +110,18 @@ run_round1_pipeline <- function(){
   print(paste("RMSE on test: ", rmse_test, "RMSE on train:",  rmse_train, "% predicted corect death ", percentage_correct_death))
   
   #risk train
-  risk_score_global <- result$risk_score_global$train$fit
-  risk_score_12 <- result$risk_score_12$train$fit
-  risk_score_18 <- result$risk_score_18$train$fit
-  risk_score_24 <- result$risk_score_24$train$fit
+  risk_score_global <- result$risk_score_global$train
+  risk_score_12 <- result$risk_score_12$train
+  risk_score_18 <- result$risk_score_18$train
+  risk_score_24 <- result$risk_score_24$train
   risk_score_train <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
   
   
   
-  risk_score_global <- result$risk_score_global$test$fit
-  risk_score_12 <- result$risk_score_12$test$fit
-  risk_score_18 <- result$risk_score_18$test$fit
-  risk_score_24 <- result$risk_score_24$test$fit
+  risk_score_global <- result$risk_score_global$test
+  risk_score_12 <- result$risk_score_12$test
+  risk_score_18 <- result$risk_score_18$test
+  risk_score_24 <- result$risk_score_24$test
  
   risk_score_test <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
   

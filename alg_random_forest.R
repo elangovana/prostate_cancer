@@ -3,19 +3,20 @@ library(futile.logger)
 predict_timetolive <- function(subset_train, subset_test, dependent_variables, outdir){
   library("randomForest")
   flog.info("Begin function predict_timetolive")
-  log_datastructure(subset_train, subset_test)
   
   #run RF, use rough fix for missing values
   subset_train.roughfix <- subset_train
   subset_train.roughfix[, !colnames(subset_train.roughfix) %in% dependent_variables] <- na.roughfix(subset_train.roughfix[, !colnames(subset_train.roughfix) %in% dependent_variables])
   subset_test.roughfix <- na.roughfix(subset_test)  
+  
   #Make sure the factor levels in train and test are the same, else random forest cracks!!
   datasets_aligned_factors <-  make_factors_alike(subset_train.roughfix, subset_test.roughfix)
   subset_train.roughfix <- datasets_aligned_factors$train
   subset_test.roughfix <- datasets_aligned_factors$test
   log_datastructure(subset_train.roughfix, subset_test.roughfix)
-  
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 500, mtry=50, importance=TRUE, do.trace=TRUE)
+
+  write.csv(subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables], file=file.path(outdir, "temp.csv"))
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 500, mtry=50, importance=TRUE, do.trace=FALSE)
   print("random forest fit: ")
   print(fit)
   
@@ -107,7 +108,7 @@ predict_death <- function(subset_train, subset_test, dependent_variables, outdir
   subset_test.roughfix <- datasets_aligned_factors$test
   
   #Run RF
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix[, predict_col], ntree = 1000,  importance=TRUE)    
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix[, predict_col], ntree = 500,  importance=TRUE, do.trace = FALSE)    
   write.csv( importance(fit) , file=file.path(outdir, paste(predict_col,"_importanceFit.csv")))  
   print("random forest fit: ")
   print(fit)
@@ -131,132 +132,89 @@ predict_death <- function(subset_train, subset_test, dependent_variables, outdir
   return(list(predictions=predictions, fit=fit , train=subset_train.roughfix, test=subset_test.roughfix ))  
 }
 
-calc_event <- function(time_period_in_months, row){
+
+
+
+calc_event <- function(time_period_in_days, row){
   
   #if censored no event
   if (row["DEATH"] == "CENSORED"){
     return(FALSE)
   }
   # for time agnostic calc, the event occurs for if not cenceored
-  if (time_period_in_months <= 0){
+  if (time_period_in_days <= 0){
     return(TRUE)
   }
   ##the event has occurred
   #If the number of months less than time period, even has occurred
-  if ( as.numeric(row["LKADT_P"]) > time_period_in_months){
+  if ( as.numeric(row["LKADT_P"]) <= time_period_in_days){
     return(TRUE)
   }
   #no event
   return (FALSE)
 }
 
-run_risk_score2 <- function(model_ttl, model_death, time_period_in_days, outdir){
-  
-  add_time <- function(data, time_period_in_days){
-    if (time_period_in_days == 0)
-    {
-      data[, "TIME"] <- data[, "LKADT_P"]
-    }
-    else
-    {
-      data[, "TIME"] <- time_period_in_days
-    }
-    return(data)
-  }
-  
-  #create new dynamic column to predict death in days
-  new_event_column_name <-  paste("DEATH_IN_", time_period_in_days, sep="")
-  
-  #apply  event for train
-  df_train <- model_ttl$train 
-  df_train <- add_label_death_within_days(df_train,time_period_in_days,  new_event_column_name)
- 
-  print(str(df_train, list.len=3000))
-  #predict event for test  
-  df_test <- model_ttl$test
-  model_death_in_days <- predict_death(df_train, df_test, c(dependent_variables(), new_event_column_name), outdir, new_event_column_name)
-  death_in_days_predictions <- model_death_in_days$predictions
-  df_test$LKADT_P <-  model_ttl$predictions[rownames(df_test)]
-  
-  #add time
-  df_train <- add_time(df_train, time_period_in_days)
-  df_test <- add_time(df_test, time_period_in_days)
-  #add event
-  df_test$EVENT <-  as.character(death_in_days_predictions[rownames(df_test)])=="YES"
-  df_train$EVENT <-  as.character(df_train[, new_event_column_name] )=="YES"
-    
-  ##Obtain predictors for cox model.
-  imp_rf <- importance(model_ttl$fit)
-  predictor_rating<- imp_rf[imp_rf[, "%IncMSE"] > 0, "IncNodePurity"]
-  predictor_rating <- sort(predictor_rating, decreasing = TRUE)
-  topn = ceiling(length(predictor_rating) * .25) # only consider top n%
-  
-  flog.info("No of topN variables used for risk calculation : %s out of %s, out of full predictor %s", topn, length(predictor_rating), nrow(imp_rf))  
-  
-  formula = as.formula(paste("Surv(TIME, EVENT)" , paste(names(predictor_rating[c(1:topn)]),collapse="+"), sep=" ~ "))
-  print(formula)
-  library(survival)
 
+run_risk_score <- function(df_train, df_test, predictors, time_period_in_days, outdir){
+  
+  #apply time period on event
+  df_train$EVENT <- apply(df_train, 1, function(x){
+    calc_event(time_period_in_days,x)
+  })
+  source("./utilities.R")
+  plot_survival(df_train$LKADT_P, df_train$EVENT)
+  
+
+ 
+  
+ 
+  formula = as.formula(paste("Surv(LKADT_P, EVENT)" , paste(predictors,collapse="+"), sep=" ~ "))
+  flog.debug(formula)
+  library(survival)
   cox_fit = coxph(formula, df_train)
-  print("Dim cox fit")
-  print(cox_fit)
+  print(" cox fit")
+  print(summary(cox_fit))
   
   #calc score
   risk_scores_test = predict(cox_fit,type="risk",se.fit=TRUE, newdata = df_test)
   risk_scores_train = predict(cox_fit,type="risk",se.fit=TRUE, newdata = df_train)
+  
+  
+  #write output
+  write.csv( risk_scores_test$fit, file=file.path(outdir, paste("risk_scores_test",  time_period_in_days,".csv", sep="")))
+  write.csv( risk_scores_train$fit, file=file.path(outdir, paste("risk_scores_train", time_period_in_days ,".csv", sep="")))
+  
+  return(list(train=risk_scores_train$fit, test =risk_scores_test$fit ))
+  #print(df_train[, c("risk_score", names(predictor_rating[c(1:topn)]))])
+  
+}
+
+run_risk_score_lassocox <- function(df_train, df_test, predictors, time_period_in_days, outdir){
+  
+  #apply time period on event
+  df_train$EVENT <- apply(df_train, 1, function(x){
+    calc_event(0,x)
+  })
+ 
+  
+  formula = as.formula(paste("~", paste(predictors,collapse="+"), sep=" "))
+  print(formula)
+  library(penalized)
+
+  cox_fit <- penalized(Surv(LKADT_P, EVENT), penalized = formula,
+                   data = df_train,model=c("cox"), lambda1=1)
+
+  #calc score
+
+   risk_scores_test = survival( predict(cox_fit,formula, data = (df_test)), time_period_in_days)
+   
+   risk_scores_train =survival( predict(cox_fit,formula, data = (df_train)), time_period_in_days)
+   
   
   
   #write output
   write.csv( risk_scores_test, file=file.path(outdir, paste("risk_scores_test",  time_period_in_days,".csv", sep="")))
   write.csv( risk_scores_train, file=file.path(outdir, paste("risk_scores_train", time_period_in_days ,".csv", sep="")))
-  
-  return(list(train=risk_scores_train, test =risk_scores_test ))
-  #print(df_train[, c("risk_score", names(predictor_rating[c(1:topn)]))])
-  
-}
-
-run_risk_score <- function(model_ttl, model_death, time_period_in_months, outdir){
-  
-  #apply time period on event
-  df_train <- model_ttl$train
-  df_train$EVENT <- ifelse(as.character(df_train$DEATH)=="YES", TRUE, FALSE)
-  
-  #apply time period on event for test  
-  df_test <- model_ttl$test
-  death_predictions <- model_death$predictions
-  ttl_predictions <- model_ttl$predictions
-  
-  
-#   df_test$DEATH <- death_predictions[rownames(df_test)]
-#   df_test$LKADT_P <-  ttl_predictions[rownames(df_test)]
-#   
-#   df_test$EVENT <- apply(df_test, 1, function(x){
-#     calc_event(time_period_in_months, 0)
-#   })
-  
-  ##Obtain predictors for cox model.
-  imp_rf <- importance(model_ttl$fit)
-  predictor_rating<- imp_rf[imp_rf[, "%IncMSE"] > 0, "IncNodePurity"]
-  predictor_rating <- sort(predictor_rating, decreasing = TRUE)
-  topn = ceiling(length(predictor_rating) * .25) # only consider top n%
-  
-  flog.info("No of topN variables used for risk calculation : %s out of %s, out of full predictor %s", topn, length(predictor_rating), nrow(imp_rf))  
- 
-  formula = as.formula(paste("Surv(LKADT_P, EVENT)" , paste(names(predictor_rating[c(1:topn)]),collapse="+"), sep=" ~ "))
-  flog.debug(formula)
-  library(survival)
-  cox_fit = coxph(formula, df_train)
-  print("Dim cox fit")
-  print(cox_fit)
-  
-  #calc score
-  risk_scores_test = predict(cox_fit,type="risk",se.fit=TRUE, newdata = df_test)
-  risk_scores_train = predict(cox_fit,type="risk",se.fit=TRUE, newdata = df_train)
-  
-  
-  #write output
-  write.csv( risk_scores_test, file=file.path(outdir, paste("risk_scores_test",  time_period_in_months,".csv", sep="")))
-  write.csv( risk_scores_train, file=file.path(outdir, paste("risk_scores_train", time_period_in_months ,".csv", sep="")))
   
   return(list(train=risk_scores_train, test =risk_scores_test ))
   #print(df_train[, c("risk_score", names(predictor_rating[c(1:topn)]))])
