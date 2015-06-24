@@ -136,7 +136,9 @@ predict_death <- function(subset_train, subset_test, dependent_variables, outdir
 
 
 calc_event <- function(time_period_in_days, row){
-  
+  if  (is.na(row["DEATH"])){
+    return(FALSE)
+  }
   #if censored no event
   if (row["DEATH"] == "CENSORED"){
     return(FALSE)
@@ -162,7 +164,7 @@ run_risk_score <- function(df_train, df_test, predictors, time_period_in_days, o
     calc_event(time_period_in_days,x)
   })
   source("./utilities.R")
-  plot_survival(df_train$LKADT_P, df_train$EVENT)
+
   
 
  
@@ -171,7 +173,7 @@ run_risk_score <- function(df_train, df_test, predictors, time_period_in_days, o
   formula = as.formula(paste("Surv(LKADT_P, EVENT)" , paste(predictors,collapse="+"), sep=" ~ "))
   flog.debug(formula)
   library(survival)
-  cox_fit = coxph(formula, df_train)
+  cox_fit = coxph(formula, df_train, control=coxph.control(iter.max = 1000))
   print(" cox fit")
   print(summary(cox_fit))
   
@@ -202,7 +204,7 @@ run_risk_score_lassocox <- function(df_train, df_test, predictors, time_period_i
   library(penalized)
 
   cox_fit <- penalized(Surv(LKADT_P, EVENT), penalized = formula,
-                   data = df_train,model=c("cox"), lambda1=1)
+                   data = df_train,model=c("cox"), lambda1=10)
 
   #calc score
 
@@ -216,7 +218,7 @@ run_risk_score_lassocox <- function(df_train, df_test, predictors, time_period_i
   write.csv( risk_scores_test, file=file.path(outdir, paste("risk_scores_test",  time_period_in_days,".csv", sep="")))
   write.csv( risk_scores_train, file=file.path(outdir, paste("risk_scores_train", time_period_in_days ,".csv", sep="")))
   
-  return(list(train=risk_scores_train, test =risk_scores_test ))
+  return(list(train=1/risk_scores_train, test =1/risk_scores_test ))
   #print(df_train[, c("risk_score", names(predictor_rating[c(1:topn)]))])
   
 }

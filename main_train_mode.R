@@ -34,7 +34,7 @@ out_dir ="./outdat_trainmode"
 out_dir <- setup_outdir(out_dir)
 
 sink()
-setup_log(out_dir)
+#setup_log(out_dir)
 flog.threshold(INFO)
 set_options()
 
@@ -43,12 +43,12 @@ input_data_train_dir = file.path(input_data_dir, "training")
 
 
 #rows_in_train = c(1100:1300,1401:1600)
-#rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
-rows_in_train = c(1:200, 301:700, 801:1000)
+rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
+#rows_in_train = c(1:200, 301:700, 801:1000)
 rows_in_test = c(201:300,701:800,1301:1400)
 #rows_in_test = c(1301:1400)
 #rows_in_train = c(1:200)
-rows_in_test = c(201:300)
+#rows_in_test = c(201:300)
 
 ####Download data#############
 
@@ -101,7 +101,12 @@ run_round1_pipeline <- function(){
   #RMSE Train
   train_predictions_ttl = result$model_ttl$fit$predicted  
   rmse_train = score_q1b(train_predictions_ttl,CoreTable_training[names(train_predictions_ttl), c("LKADT_P")], CoreTable_training[names(train_predictions_ttl), c("DEATH")])
-  write.csv(data.frame(names=names(train_predictions_ttl), actual=CoreTable_training[names(train_predictions_ttl), c("LKADT_P")], prdicted=train_predictions_ttl), file=file.path(out_dir, "predicted_vs_actual_ttl.csv"))
+  write.csv(data.frame(names=rownames(df_predicted), 
+                       actual_death=CoreTable_training[rownames(df_predicted), c("DEATH")], 
+                       actual_ttl=CoreTable_training[rownames(df_predicted), c("LKADT_P")], 
+                       predicted_ttl=df_predicted$LKADT_P ,
+                       predicted_death=df_predicted$DEATH 
+                       ), file=file.path(out_dir, "predicted_vs_actual.csv"))
   source("./translate_data.R")
   cleaned_train = clean_labels(CoreTable_training[rownames(df_predicted), ])
   percentage_correct_death = (100 * length(which(as.character(df_predicted$DEATH)== as.character(cleaned_train[rownames(df_predicted), c("DEATH")])))) / length(df_predicted$DEATH)
@@ -123,15 +128,56 @@ run_round1_pipeline <- function(){
   risk_score_18 <- result$risk_score_18$test
   risk_score_24 <- result$risk_score_24$test
  
-  risk_score_test <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
-  
-  print("-----OUTPUT---")
+ risk_score_test <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
+ #risk_score_test <- score_q1a(CoreTable_training[rownames(df_predicted), c("LKADT_P")],CoreTable_training[rownames(df_predicted), c("DEATH")], df_predicted$LKADT_P, df_predicted$LKADT_P, df_predicted$LKADT_P, df_predicted$LKADT_P)
+ write.csv(data.frame(rpt=names(risk_score_global), LKADT_P=CoreTable_training[names(risk_score_global), c("LKADT_P")], Death= CoreTable_training[names(risk_score_global), c("DEATH")], risk_Score_12=risk_score_12[names(risk_score_global)]), file=file.path(out_dir, "risk_score_auc_cox.csv"))
+ write.csv(data.frame(rpt=names(risk_score_global), LKADT_P=CoreTable_training[names(risk_score_global), c("LKADT_P")], Death= CoreTable_training[names(risk_score_global), c("DEATH")], risk_Score_12=1/df_predicted$LKADT_P), file=file.path(out_dir, "risk_score_auc_ttl.csv"))
+ 
+ print("-----OUTPUT---")
   #RMSE Comparitive output
   print(paste("RMSE on test: ", rmse_test, "RMSE on train:",  rmse_train, "% predicted corect death ", percentage_correct_death))
   print("Global risk score on train: ")
   print(risk_score_train)
   print("Global risk score on test: ")
   print(risk_score_test)
+  print("Global risk score on test using ttl: ")
+  risk_score_test <- score_q1a(CoreTable_training[rownames(df_predicted), c("LKADT_P")],CoreTable_training[rownames(df_predicted), c("DEATH")], 1/df_predicted$LKADT_P, 1/df_predicted$LKADT_P, 1/df_predicted$LKADT_P, 1/df_predicted$LKADT_P)
+ print(risk_score_test)
+  
+  print("Global risk score on test using dummy: ")
+ calc_dummy_score <- function(row, days, lowerdays=0){
+#   # return(as.numeric(row["LKADT_P"]))
+#    if (is.na(row["DEATH"]))  {return(as.numeric(row["LKADT_P"]))}
+#    if (as.character(row["DEATH"]) =="YES") {return(as.numeric(row["LKADT_P"] )+ 50000)}
+#    return(as.numeric(row["LKADT_P"]))
+   
+   result = 0
+   if(is.na(row["DEATH"])){
+     result = 0
+   }
+   else if (as.character(row["DEATH"]) =="YES"){
+     if((as.numeric(row["LKADT_P"]) >= lowerdays) & (as.numeric(row["LKADT_P"]) < days)) {result = 1/as.numeric(row["LKADT_P"])}
+     else{result = -1 * as.numeric(row["LKADT_P"])}
+   }
+   return(result)
+ }
+ 
+df_risk_score = data.frame( DEATH=df_predicted$DEATH, LKADT_P=df_predicted$LKADT_P)
+rownames(df_risk_score)=rownames(df_predicted)
+ dummy_score_12<-apply(CoreTable_training[rownames(df_predicted), ], 1, function(x){calc_dummy_score(x, 12*30.5)})
+dummy_score_18<-apply(CoreTable_training[rownames(df_predicted), ], 1, function(x){calc_dummy_score(x, 18 * 30.5)})
+dummy_score_24<-apply(CoreTable_training[rownames(df_predicted), ], 1, function(x){calc_dummy_score(x, 24 * 30.5)})
+dummy_score_global<-apply(CoreTable_training[rownames(df_predicted), ], 1, function(x){calc_dummy_score(x, 30*30.5, 6*30.5)})
+
+#  dummy_score_12<-apply(df_risk_score[rownames(df_predicted), ], 1, function(x){calc_dummy_score(x, 12*30.5)})
+# dummy_score_18<-apply(df_risk_score[rownames(df_predicted), ], 1, function(x){calc_dummy_score(x, 18 * 30.5)})
+# dummy_score_24<-apply(df_risk_score[rownames(df_predicted), ], 1, function(x){calc_dummy_score(x, 24 * 30.5)})
+# dummy_score_global<-apply(df_risk_score[rownames(df_predicted), ], 1, function(x){calc_dummy_score(x, 30*30.5, 6*30.5)})
+  risk_score_test <- score_q1a(CoreTable_training[rownames(df_predicted), c("LKADT_P")],CoreTable_training[rownames(df_predicted), c("DEATH")],  dummy_score_global, dummy_score_12, dummy_score_18, dummy_score_24)
+ write.csv(data.frame(rpt=names(risk_score_global), LKADT_P=CoreTable_training[names(risk_score_global), c("LKADT_P")], Death= CoreTable_training[names(risk_score_global), c("DEATH")], dummy_score_global, dummy_score_12, dummy_score_18, dummy_score_24), file=file.path(out_dir, "risk_score_auc_dummy.csv"))
+ 
+ print(risk_score_test)
+ 
 }
 
 run_round2_pipeline<- function(){  
