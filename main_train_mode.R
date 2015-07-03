@@ -34,7 +34,7 @@ out_dir ="./outdat_trainmode"
 out_dir <- setup_outdir(out_dir)
 
 sink()
-#setup_log(out_dir)
+setup_log(out_dir)
 flog.threshold(INFO)
 set_options()
 
@@ -48,7 +48,7 @@ rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
 rows_in_test = c(201:300,701:800,1301:1400)
 #rows_in_test = c(1301:1400)
 #rows_in_train = c(1:200)
-#rows_in_test = c(201:300)
+rows_in_test = c(201:300)
 
 ####Download data#############
 

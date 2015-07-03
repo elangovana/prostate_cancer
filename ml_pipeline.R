@@ -70,7 +70,7 @@ ml_pipeline <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_
   
   #get ready for submission
   #score_all <- calculate_risk_score_for_all(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
-score_all <- calculate_risk_score_custom(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+score_all <- calculate_risk_score(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
 score_12 <-score_all$score_12
 score_18 <-score_all$score_18
 score_24 <-score_all$score_24
@@ -193,13 +193,13 @@ calculate_risk_score_death <- function(train_ct, train_lv, train_lm, train_mh, t
 }
 
 calculate_risk_score <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-  test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, time_period_in_days, outdir){
-    flog.info("Running function calculate_risk_score for time period %s", time_period_in_days)
-    outdir = file.path(outdir, paste("calc_risk_score",time_period_in_days, sep="_" ))
+  test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
+    flog.info("Running function calculate_risk_score for time period ")
+    outdir = file.path(outdir, "calc_risk_score_lasso_forall")
     dir.create(outdir)
     # merged_train_data = merge_all_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, outdir)
-    merged_train_data = merge_all_data(train_ct, train_lv, data.frame(), data.frame(), data.frame(), data.frame(), outdir)
-    merged_test_data = merge_all_data(test_ct, test_lv, data.frame(), data.frame(), data.frame(), data.frame(), outdir)
+    merged_train_data = merge_all_data(train_ct, data.frame(), data.frame(), data.frame(), data.frame(), data.frame(), outdir)
+    merged_test_data = merge_all_data(test_ct, data.frame(), data.frame(), data.frame(), data.frame(), data.frame(), outdir)
         
     aligned_data <- align_test_train_data(merged_train_data, merged_test_data, outdir) 
     predictors <- get_predictors_for_ttl(aligned_data$train, aligned_data$test, aligned_data$dependent_variables, outdir)   
@@ -207,11 +207,16 @@ calculate_risk_score <- function(train_ct, train_lv, train_lm, train_mh, train_p
    
     train <- predictors$model_data$train
     test <- predictors$model_data$test
-   
     
-    result = run_risk_score_lassocox(train,test, predictors$predictors, time_period_in_days, outdir)
-    flog.info("Completed function calculate_risk_score for time period %s", time_period_in_days)
-    return(result)
+    result_12 = run_risk_score_lassocox(train,test, predictors$predictors, 12*30, outdir)
+    result_18 = run_risk_score_lassocox(train,test, predictors$predictors, 18*30, outdir)
+    result_24 = run_risk_score_lassocox(train,test, predictors$predictors, 24*30, outdir)
+    result_global = run_risk_score_lassocox(train,test, predictors$predictors, 0, outdir)
+    
+    
+    flog.info("Completed function calculate_risk_score for time period")
+    return(list(score_12=result_12, score_18=result_18, score_24=result_24, score_global= result_global))
+    
    
 }
 
@@ -237,10 +242,10 @@ calculate_risk_score_for_all_2 <- function(train_ct, train_lv, train_lm, train_m
 #   result_24 = run_risk_score_lassocox(train,test, predictors$predictors, 24*30, outdir)
 #   result_global = run_risk_score_lassocox(train,test, predictors$predictors, 0, outdir)
 
-  result_12 = run_risk_score(test,test, predictors$predictors, 12*30, outdir)
-  result_18 = run_risk_score(test,test, predictors$predictors, 18*30, outdir)
-  result_24 = run_risk_score(test,test, predictors$predictors, 24*30, outdir)
-  result_global = run_risk_score(test,test, predictors$predictors, 0, outdir)
+  result_12 = run_risk_score(train,test, predictors$predictors, 12*30, outdir)
+  result_18 = run_risk_score(train,test, predictors$predictors, 18*30, outdir)
+  result_24 = run_risk_score(train,test, predictors$predictors, 24*30, outdir)
+  result_global = run_risk_score(train,test, predictors$predictors, 0, outdir)
 
 
   flog.info("Completed function calculate_risk_score for all for time period")

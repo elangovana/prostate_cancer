@@ -16,7 +16,14 @@ predict_timetolive <- function(subset_train, subset_test, dependent_variables, o
   log_datastructure(subset_train.roughfix, subset_test.roughfix)
 
   write.csv(subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables], file=file.path(outdir, "temp.csv"))
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix$LKADT_P, ntree = 500, mtry=50, importance=TRUE, do.trace=FALSE)
+   fitrfcv <-  rfcv(subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , subset_train.roughfix$LKADT_P, cv.fold=5, scale="log", step=0.80, ntree = 1000)
+  print(fitrfcv$n.var)
+  print(sqrt(fitrfcv$error.cv) )
+  plot(fitrfcv$n.var, fitrfcv$error.cv, log="x", type="o", lwd=2)
+  mtry = fitrfcv$n.var[fitrfcv$error.cv == min(fitrfcv$error.cv)]
+  print(mtry)
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , subset_train.roughfix$LKADT_P, ntree = 1000, mtry=mtry, importance=TRUE, do.trace=FALSE)
+  
   print("random forest fit: ")
   print(fit)
   
@@ -108,7 +115,7 @@ predict_death <- function(subset_train, subset_test, dependent_variables, outdir
   subset_test.roughfix <- datasets_aligned_factors$test
   
   #Run RF
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix[, predict_col], ntree = 500,  importance=TRUE, do.trace = FALSE)    
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix[, predict_col], ntree = 1000,  importance=TRUE, do.trace = FALSE)    
   write.csv( importance(fit) , file=file.path(outdir, paste(predict_col,"_importanceFit.csv")))  
   print("random forest fit: ")
   print(fit)
@@ -203,8 +210,12 @@ run_risk_score_lassocox <- function(df_train, df_test, predictors, time_period_i
   print(formula)
   library(penalized)
 
+  cv <- optL1 (Surv(LKADT_P, EVENT), penalized=formula,   data = df_train,
+         model = c("cox"),  trace = TRUE)
+  print("cross validation results for lasso cox")
+  print(cv)
   cox_fit <- penalized(Surv(LKADT_P, EVENT), penalized = formula,
-                   data = df_train,model=c("cox"), lambda1=10)
+                   data = df_train,model=c("cox"), lambda1=cv$lambda)
 
   #calc score
 
