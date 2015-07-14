@@ -23,7 +23,7 @@ setup_outdir <- function(outdir){
   if (!file.exists(outdir)){  
     dir.create(file.path(".", outdir)) 
   }
-  cur_time=format(Sys.time(), "%Y%b%d_%H%M%S")
+  cur_time=format(Sys.time(), "%Y%m%d_%H%M%S")
   outdir = file.path(outdir, cur_time)
   dir.create(outdir, cur_time)  
   return(outdir)
@@ -47,8 +47,8 @@ rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
 #rows_in_train = c(1:200, 301:700, 801:1000)
 rows_in_test = c(201:300,701:800,1301:1400)
 #rows_in_test = c(1301:1400)
-#rows_in_train = c(1:200)
-rows_in_test = c(201:300)
+#rows_in_train = c(1:200, 301:700)
+#rows_in_test = c(201:300)
 
 ####Download data#############
 
@@ -133,16 +133,19 @@ run_round1_pipeline <- function(){
  write.csv(data.frame(rpt=names(risk_score_global), LKADT_P=CoreTable_training[names(risk_score_global), c("LKADT_P")], Death= CoreTable_training[names(risk_score_global), c("DEATH")], risk_Score_12=risk_score_12[names(risk_score_global)]), file=file.path(out_dir, "risk_score_auc_cox.csv"))
  write.csv(data.frame(rpt=names(risk_score_global), LKADT_P=CoreTable_training[names(risk_score_global), c("LKADT_P")], Death= CoreTable_training[names(risk_score_global), c("DEATH")], risk_Score_12=1/df_predicted$LKADT_P), file=file.path(out_dir, "risk_score_auc_ttl.csv"))
  
- print("-----OUTPUT---")
+  print("-----OUTPUT---")
   #RMSE Comparitive output
   print(paste("RMSE on test: ", rmse_test, "RMSE on train:",  rmse_train, "% predicted corect death ", percentage_correct_death))
   print("Global risk score on train: ")
   print(risk_score_train)
   print("Global risk score on test: ")
   print(risk_score_test)
+  print("Global risk score on train using ttl: ")
+  risk_score_train <- score_q1a(CoreTable_training[names(train_predictions_ttl), c("LKADT_P")],CoreTable_training[names(train_predictions_ttl), c("DEATH")], 1/train_predictions_ttl, 1/train_predictions_ttl, 1/train_predictions_ttl, 1/train_predictions_ttl)
+  print(risk_score_train)
   print("Global risk score on test using ttl: ")
   risk_score_test <- score_q1a(CoreTable_training[rownames(df_predicted), c("LKADT_P")],CoreTable_training[rownames(df_predicted), c("DEATH")], 1/df_predicted$LKADT_P, 1/df_predicted$LKADT_P, 1/df_predicted$LKADT_P, 1/df_predicted$LKADT_P)
- print(risk_score_test)
+  print(risk_score_test)
   
   print("Global risk score on test using dummy: ")
  calc_dummy_score <- function(row, days, lowerdays=0){

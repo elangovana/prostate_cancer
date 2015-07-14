@@ -23,5 +23,19 @@ calc_dummy_score <- function(row, days, lowerdays=0){
   return(result)
 }
 
+save_rng <- function(savefile=tempfile()) {
+  if (exists(".Random.seed"))  {
+    oldseed <- get(".Random.seed", .GlobalEnv)
+  } else stop("don't know how to save before set.seed() or r*** call")
+  oldRNGkind <- RNGkind()
+  save("oldseed","oldRNGkind",file=savefile)
+  invisible(savefile)
+}
+
+restore_rng <- function(savefile) {
+  load(savefile)
+  do.call("RNGkind",as.list(oldRNGkind))  ## must be first!
+  assign(".Random.seed", oldseed, .GlobalEnv)
+}
 
 source("./score.R")

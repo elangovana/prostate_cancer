@@ -70,7 +70,7 @@ ml_pipeline <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_
   
   #get ready for submission
   #score_all <- calculate_risk_score_for_all(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
-score_all <- calculate_risk_score(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
+score_all <- calculate_risk_score_lassocox(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir)
 score_12 <-score_all$score_12
 score_18 <-score_all$score_18
 score_24 <-score_all$score_24
@@ -162,8 +162,8 @@ calculate_risk_score_death <- function(train_ct, train_lv, train_lm, train_mh, t
   outdir = file.path(outdir, paste("calc_risk_score_custom", sep="_" ))
   dir.create(outdir)
   # merged_train_data = merge_all_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, outdir)
-  merged_train_data = merge_all_data(train_ct,  train_lv, train_lm, data.frame(), data.frame(), data.frame(), outdir)
-  merged_test_data = merge_all_data(test_ct, test_lv, test_lm, data.frame(), data.frame(), data.frame(), outdir)
+  merged_train_data = merge_all_data(train_ct,  train_lv, data.frame(), data.frame(), data.frame(), data.frame(), outdir)
+  merged_test_data = merge_all_data(test_ct, test_lv, data.frame(), data.frame(), data.frame(), data.frame(), outdir)
   
   aligned_data <- align_test_train_data(merged_train_data, merged_test_data, outdir) 
   predictors_ttl <- get_predictors_for_ttl(aligned_data$train, aligned_data$test, aligned_data$dependent_variables, outdir, topnpercent=.50)   
@@ -192,7 +192,7 @@ calculate_risk_score_death <- function(train_ct, train_lv, train_lm, train_mh, t
   return(list(score_12=list(test=result_12, train=result_12), score_18=list(test=result_18, train=result_18), score_24=list(test=result_24, train=result_24), score_global= list(test=result_global, train=result_global)))
 }
 
-calculate_risk_score <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
+calculate_risk_score_lassocox <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
   test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
     flog.info("Running function calculate_risk_score for time period ")
     outdir = file.path(outdir, "calc_risk_score_lasso_forall")
@@ -209,13 +209,13 @@ calculate_risk_score <- function(train_ct, train_lv, train_lm, train_mh, train_p
     test <- predictors$model_data$test
     
     result_12 = run_risk_score_lassocox(train,test, predictors$predictors, 12*30, outdir)
-    result_18 = run_risk_score_lassocox(train,test, predictors$predictors, 18*30, outdir)
-    result_24 = run_risk_score_lassocox(train,test, predictors$predictors, 24*30, outdir)
-    result_global = run_risk_score_lassocox(train,test, predictors$predictors, 0, outdir)
+  #  result_18 = run_risk_score_lassocox(train,test, predictors$predictors, 18*30, outdir)
+   # result_24 = run_risk_score_lassocox(train,test, predictors$predictors, 24*30, outdir)
+  #  result_global = run_risk_score_lassocox(train,test, predictors$predictors, 0, outdir)
     
     
     flog.info("Completed function calculate_risk_score for time period")
-    return(list(score_12=result_12, score_18=result_18, score_24=result_24, score_global= result_global))
+    return(list(score_12=result_12, score_18=result_12, score_24=result_12, score_global= result_12))
     
    
 }
@@ -313,8 +313,8 @@ get_predictors_for_death <- function(subset_train, subset_test,dependent_variabl
 setup_data_ttl <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
                     test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
   #merged_train_data = merge_all_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, outdir)
-  merged_train_data = merge_all_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, outdir)
-  merged_test_data = merge_all_data(test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)
+  merged_train_data = merge_all_data(train_ct, data.frame(), data.frame(), data.frame(), data.frame(), data.frame(), outdir)
+  merged_test_data = merge_all_data(test_ct, data.frame(), data.frame(), data.frame(), data.frame(), data.frame(), outdir)
   
   flog.info("%s records out of %s removed from train for time to event, as they are censored",  length(which(as.character(merged_train_data$DEATH)!="YES")), nrow(merged_train_data))  
   subset_train_ttl <- merged_train_data[as.character(merged_train_data$DEATH)=="YES", ]
@@ -327,7 +327,7 @@ setup_data <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_v
                            test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
  # merged_train_data = merge_all_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, outdir)
   merged_train_data = merge_all_data(train_ct, data.frame(), data.frame(), data.frame(), data.frame(), data.frame(), outdir)
-  merged_test_data = merge_all_data(test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)
+  merged_test_data = merge_all_data(test_ct, data.frame(), data.frame(), data.frame(), data.frame(), data.frame(), outdir)
   
  
   aligned_data <- align_test_train_data(merged_train_data, merged_test_data, outdir)  
@@ -337,9 +337,10 @@ setup_data <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_v
 ml_pipeline_part2 <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
                         test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, out_dir){ 
   source("./translate_data.R")
+   #clean training 
   
-  #clean training 
-  print("cleaning train")
+  flog.info("cleaning train")
+  flog.info("No of train records before clean up %s",nrow(train_ct) )
   train_ct <- clean_ct_data (train_ct)
   train_ct <- clean_labels (train_ct)
   train_lv <- clean_labvalue_data (train_lv)
@@ -347,6 +348,7 @@ ml_pipeline_part2 <- function(train_ct, train_lv, train_lm, train_mh, train_pm, 
   train_mh <- clean_medical_history(train_mh)
   train_vs <- clean_vital_signs(train_vs)
   train_pm <- clean_prior_medicals(train_pm)
+  flog.info("No of train records after clean up %s",nrow(train_ct) )
   
   #clean test
   print("cleaning core table for test")
@@ -357,9 +359,15 @@ ml_pipeline_part2 <- function(train_ct, train_lv, train_lm, train_mh, train_pm, 
   test_vs <- clean_vital_signs(test_vs)
   test_pm <- clean_prior_medicals(test_pm)
   
-  #merge parts of data into one
-  aligned_data <- align_test_train_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                        test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)  
+  
+  
+  
+  source("./alg_random_forest.R")
+ 
+  
+  #predict death
+  #merge parts of data into one 
+  aligned_data <-setup_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)    
   subset_train <- aligned_data$train
   subset_test <- aligned_data$test
   dependent_variables <- aligned_data$dependent_variables

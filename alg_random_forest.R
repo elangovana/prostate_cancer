@@ -1,8 +1,12 @@
 library(futile.logger)
 
-predict_timetolive <- function(subset_train, subset_test, dependent_variables, outdir){
+predict_timetolive <- function(subset_train, subset_test, dependent_variables, outdir, seed_file=""){
   library("randomForest")
   flog.info("Begin function predict_timetolive")
+
+  if (seed_file != ""){
+    restore_rng(seed_file)
+  }
   
   #run RF, use rough fix for missing values
   subset_train.roughfix <- subset_train
@@ -16,13 +20,27 @@ predict_timetolive <- function(subset_train, subset_test, dependent_variables, o
   log_datastructure(subset_train.roughfix, subset_test.roughfix)
 
   write.csv(subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables], file=file.path(outdir, "temp.csv"))
-   fitrfcv <-  rfcv(subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , subset_train.roughfix$LKADT_P, cv.fold=5, scale="log", step=0.80, ntree = 1000)
-  print(fitrfcv$n.var)
-  print(sqrt(fitrfcv$error.cv) )
-  plot(fitrfcv$n.var, fitrfcv$error.cv, log="x", type="o", lwd=2)
-  mtry = fitrfcv$n.var[fitrfcv$error.cv == min(fitrfcv$error.cv)]
+  
+#   fitrfcv <-  rfcv(subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , subset_train.roughfix$LKADT_P, cv.fold=10, scale="log", step=0.80, ntree = 1000)
+#  
+#   print(sqrt(fitrfcv$error.cv) )
+#   pdf(file.path( outdir, "plots_crossvalidation_randomforest.pdf" ))
+#   plot(fitrfcv$n.var, fitrfcv$error.cv, log="x", type="o", lwd=2)
+#   dev.off()
+#   #average the top n% min error 
+#   sorted_fit <- sort(fitrfcv$error.cv)
+#   print("--sorted fit")
+#   print(sqrt(sorted_fit))
+#   topn = ceiling(length(sorted_fit) * .1)
+#   print("as.numeric( names(sorted_fit[1:topn]")
+#   print(as.numeric( names(sorted_fit[1:topn])))
+  mtry = 15 #mean( as.numeric( names(sorted_fit[1:topn])))
   print(mtry)
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , subset_train.roughfix$LKADT_P, ntree = 1000, mtry=mtry, importance=TRUE, do.trace=FALSE)
+  set.seed(NULL)
+  save_rng(file.path(outdir, "rdata.seed"))
+
+datax <- subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables]
+  fit <- randomForest(datax  , subset_train.roughfix$LKADT_P, ntree = 250, mtry=mtry, importance=TRUE, do.trace=FALSE)
   
   print("random forest fit: ")
   print(fit)
@@ -115,7 +133,7 @@ predict_death <- function(subset_train, subset_test, dependent_variables, outdir
   subset_test.roughfix <- datasets_aligned_factors$test
   
   #Run RF
-  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix[, predict_col], ntree = 1000,  importance=TRUE, do.trace = FALSE)    
+  fit <- randomForest( subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables] , y=subset_train.roughfix[, predict_col], ntree = 250, mtry=15, importance=TRUE, do.trace = FALSE)    
   write.csv( importance(fit) , file=file.path(outdir, paste(predict_col,"_importanceFit.csv")))  
   print("random forest fit: ")
   print(fit)
@@ -209,15 +227,19 @@ run_risk_score_lassocox <- function(df_train, df_test, predictors, time_period_i
   formula = as.formula(paste("~", paste(predictors,collapse="+"), sep=" "))
   print(formula)
   library(penalized)
-
-  cv <- optL1 (Surv(LKADT_P, EVENT), penalized=formula,   data = df_train,
-         model = c("cox"),  trace = TRUE)
-  print("cross validation results for lasso cox")
-  print(cv)
-  cox_fit <- penalized(Surv(LKADT_P, EVENT), penalized = formula,
-                   data = df_train,model=c("cox"), lambda1=cv$lambda)
-
-  #calc score
+  fit1 <- profL1(Surv(LKADT_P, EVENT), penalized=formula,   data = df_train,
+                 model = c("cox"), fold=10 , minlambda1=0.01, maxlambda1= 10000, trace=FALSE, plot=FALSE)
+  write.csv(data.frame(lambda=fit1$lambda, cvl=fit1$cvl), file=file.path(outdir, "profl1.csv"))
+  pdf(file.path( outdir, "plots_run_risk_score_lassocox_profL1.pdf" ))
+   plot(fit1$lambda, fit1$cvl,  type="l", log="x")
+   dev.off()
+   cv <- optL1 (Surv(LKADT_P, EVENT), penalized=formula,   data = df_train,
+          model = c("cox"), trace=FALSE, minlambda1=1, maxlambda1=500)
+   print("Cross validation lambda for cox is ")
+   print(cv$lambda)
+   cox_fit <- penalized(Surv(LKADT_P, EVENT), penalized = formula,
+                    data = df_train,model=c("cox"), lambda1=cv$lambda)
+   #calc score
 
    risk_scores_test = survival( predict(cox_fit,formula, data = (df_test)), time_period_in_days)
    

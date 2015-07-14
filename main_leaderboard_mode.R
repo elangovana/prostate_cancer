@@ -17,7 +17,7 @@ setup_outdir <- function(outdir){
   if (!file.exists(outdir)){  
     dir.create(file.path(".", outdir)) 
   }
-  cur_time=format(Sys.time(), "%Y%b%d_%H%M%S")
+  cur_time=format(Sys.time(), "%Y%m%d_%H%M%S")
   outdir = file.path(outdir, cur_time)
   dir.create(outdir, cur_time)  
   return(outdir)

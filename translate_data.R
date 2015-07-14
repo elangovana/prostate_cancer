@@ -684,6 +684,13 @@ clean_ct_data <- function(train_ct){
   levels(train_ct$MHVASC) <- c("YES", "NO")
   train_ct$MHVASC[is.na( train_ct$MHVASC)] <- "NO"
   
+  
+  #log PSA
+  train_ct$PSA <- log2(train_ct$PSA)
+  train_ct$PSA[ is.infinite(train_ct$PSA) ]<- 0
+  
+   columns_to_ignore = c("PER_REF",  "LKADT_REF")
+   train_ct <- train_ct[, !colnames(train_ct) %in% columns_to_ignore]
   return(train_ct)
   
 }
