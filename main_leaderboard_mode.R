@@ -32,11 +32,11 @@ flog.threshold(INFO)
 
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
-input_data_leaderboard_dir = file.path(input_data_dir, "leaderboard")
+input_data_leaderboard_dir = file.path(input_data_dir, "finalscoringset")
 count = 0
 #rows_in_train is only used when count > 0 
 rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
-
+#rows_in_train = c(1:100)
 ####Download Train data#############
 
 CoreTable_synapse_entity <- file.path(input_data_train_dir,"CoreTable_training.csv") 
@@ -118,19 +118,19 @@ rmse_train = score_q1b(train_predictions_ttl,CoreTable_training[names(train_pred
 print(paste( "RMSE on train:",  rmse_train))
 
 #risk train
-risk_score_global <- result$risk_score_global$train$fit
-risk_score_12 <- result$risk_score_12$train$fit
-risk_score_18 <- result$risk_score_18$train$fit
-risk_score_24 <- result$risk_score_24$train$fit
+risk_score_global <- result$risk_score_global$train 
+risk_score_12 <- result$risk_score_12$train
+risk_score_18 <- result$risk_score_18$train
+risk_score_24 <- result$risk_score_24$train
 risk_score_train <- score_q1a(CoreTable_training[names(risk_score_global), c("LKADT_P")],CoreTable_training[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
 
 
 print("Global risk score on test: ")
-risk_score_global <- result$risk_score_global$test$fit
+risk_score_global <- result$risk_score_global$test
 
-risk_score_12 <- result$risk_score_12$test$fit
-risk_score_18 <- result$risk_score_18$test$fit
-risk_score_24 <- result$risk_score_24$test$fit
+risk_score_12 <- result$risk_score_12$test
+risk_score_18 <- result$risk_score_18$test
+risk_score_24 <- result$risk_score_24$test
 
 risk_score_test <- score_q1a(df_predicted[names(risk_score_global), c("LKADT_P")],df_predicted[names(risk_score_global), c("DEATH")], risk_score_global, risk_score_12[names(risk_score_global)], risk_score_18[names(risk_score_global)], risk_score_24[names(risk_score_global)])
 

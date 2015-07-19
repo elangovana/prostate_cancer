@@ -6,6 +6,9 @@ predict_timetolive <- function(subset_train, subset_test, dependent_variables, o
 
   if (seed_file != ""){
     restore_rng(seed_file)
+  }else{
+    set.seed(NULL)
+    save_rng(file.path(outdir, "rdata.seed"))
   }
   
   #run RF, use rough fix for missing values
@@ -36,8 +39,7 @@ predict_timetolive <- function(subset_train, subset_test, dependent_variables, o
 #   print(as.numeric( names(sorted_fit[1:topn])))
   mtry = 15 #mean( as.numeric( names(sorted_fit[1:topn])))
   print(mtry)
-  set.seed(NULL)
-  save_rng(file.path(outdir, "rdata.seed"))
+  
 
 datax <- subset_train.roughfix[, !colnames(subset_train.roughfix ) %in% dependent_variables]
   fit <- randomForest(datax  , subset_train.roughfix$LKADT_P, ntree = 250, mtry=mtry, importance=TRUE, do.trace=FALSE)
@@ -216,42 +218,69 @@ run_risk_score <- function(df_train, df_test, predictors, time_period_in_days, o
   
 }
 
-run_risk_score_lassocox <- function(df_train, df_test, predictors, time_period_in_days, outdir){
+run_risk_score_lassocox <- function(df_train, df_test, predictors, time_period_in_days, outdir, seed_file=""){
   
   #apply time period on event
   df_train$EVENT <- apply(df_train, 1, function(x){
     calc_event(0,x)
   })
  
+ 
   
   formula = as.formula(paste("~", paste(predictors,collapse="+"), sep=" "))
   print(formula)
   library(penalized)
+  if (seed_file != ""){
+    restore_rng(seed_file)
+  }
+  else{
+    set.seed(NULL)
+    save_rng(file.path(outdir, "rdata.seed"))
+  }
+  
+  
   fit1 <- profL1(Surv(LKADT_P, EVENT), penalized=formula,   data = df_train,
                  model = c("cox"), fold=10 , minlambda1=0.01, maxlambda1= 10000, trace=FALSE, plot=FALSE)
   write.csv(data.frame(lambda=fit1$lambda, cvl=fit1$cvl), file=file.path(outdir, "profl1.csv"))
   pdf(file.path( outdir, "plots_run_risk_score_lassocox_profL1.pdf" ))
    plot(fit1$lambda, fit1$cvl,  type="l", log="x")
    dev.off()
-   cv <- optL1 (Surv(LKADT_P, EVENT), penalized=formula,   data = df_train,
-          model = c("cox"), trace=FALSE, minlambda1=1, maxlambda1=500)
-   print("Cross validation lambda for cox is ")
-   print(cv$lambda)
-   cox_fit <- penalized(Surv(LKADT_P, EVENT), penalized = formula,
-                    data = df_train,model=c("cox"), lambda1=cv$lambda)
-   #calc score
-
-   risk_scores_test = survival( predict(cox_fit,formula, data = (df_test)), time_period_in_days)
-   
-   risk_scores_train =survival( predict(cox_fit,formula, data = (df_train)), time_period_in_days)
-   
   
+  for(i in 1:1){
+    cv <- optL1 (Surv(LKADT_P, EVENT), penalized=formula,   data = df_train,
+                 model = c("cox"), trace=FALSE, minlambda1=1, maxlambda1=500)
+    print("Cross validation lambda for cox is ")
+    print(cv$lambda)
+    cox_fit <- penalized(Surv(LKADT_P, EVENT), penalized = formula,
+                         data = df_train,model=c("cox"), lambda1=cv$lambda)
+    
+   
+    risk_scores_train =survival( predict(cox_fit,formula, data = (df_train)), time_period_in_days)
+    
+    temp_risk_scores_test = survival( predict(cox_fit,formula, data = (df_test)), time_period_in_days)
+    temp_df_risk_score_test = data.frame(risk_score = 1/temp_risk_scores_test)
+    rownames(temp_df_risk_score_test) <- names(temp_risk_scores_test)
+    colnames(temp_df_risk_score_test) <- c(paste("risk_score",i, sep= "_"))
+    if (i==1){
+      df_risk_score_test <- temp_df_risk_score_test
+    }else{
+      df_risk_score_test <- merge.data.frame(df_risk_score_test, temp_df_risk_score_test, by=0)
+      rownames(df_risk_score_test) <- df_risk_score_test$Row.names
+      df_risk_score_test <- df_risk_score_test[, ! colnames(df_risk_score_test) %in% c("Row.names")]
+    }
+    
+  }
+    #calc score
+  df_risk_score_test$avg_risk_score=apply(df_risk_score_test, 1, mean)
+   write.csv(df_risk_score_test, file=file.path(outdir, "risk_scores_test_iter.csv"))
+   risk_scores_test <- df_risk_score_test$avg_risk_score
+  names(risk_scores_test) <- rownames(df_risk_score_test)
   
   #write output
   write.csv( risk_scores_test, file=file.path(outdir, paste("risk_scores_test",  time_period_in_days,".csv", sep="")))
   write.csv( risk_scores_train, file=file.path(outdir, paste("risk_scores_train", time_period_in_days ,".csv", sep="")))
   
-  return(list(train=1/risk_scores_train, test =1/risk_scores_test ))
+  return(list(train=1/risk_scores_train, test =risk_scores_test ))
   #print(df_train[, c("risk_score", names(predictor_rating[c(1:topn)]))])
   
 }

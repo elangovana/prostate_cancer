@@ -33,11 +33,30 @@ ml_pipeline <- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_
   subset_test <- aligned_data$test
   dependent_variables <- aligned_data$dependent_variables
   
-  model_ttl <- predict_timetolive(subset_train, subset_test,dependent_variables, out_dir)
-  df_predicted_ttl <- as.data.frame(model_ttl$predictions, row.names=names(model_ttl$predictions))
-  colnames(df_predicted_ttl) <- c("LKADT_P")
+  df_predicted_ttl_all <- NULL
+  for(i in 1:5){
+    temp_out= file.path(out_dir, paste("iteration_ttl", i, sep="_"))
+    dir.create(temp_out)
+    model_ttl <- predict_timetolive(subset_train, subset_test,dependent_variables, temp_out)
+    df_predicted_ttl_temp <- as.data.frame(model_ttl$predictions, row.names=names(model_ttl$predictions))
+    colnames(df_predicted_ttl_temp) <- c(paste("LKADT_P", i, sep="_"))   
+    df_predicted_ttl <- df_predicted_ttl_temp
+    if (is.null(df_predicted_ttl_all)){
+      df_predicted_ttl_all <- df_predicted_ttl_temp
+    }
+    else{
+      df_predicted_ttl_all <- merge.data.frame(df_predicted_ttl_all, df_predicted_ttl_temp, by = 0)
+      rownames(df_predicted_ttl_all) <- df_predicted_ttl_all$Row.names
+      df_predicted_ttl_all <- df_predicted_ttl_all[, !colnames(df_predicted_ttl_all) %in% c("Row.names") ]
+    }
+  }
+  df_predicted_ttl_all$LKADT_P <- apply(df_predicted_ttl_all, 1, mean)
+  write.csv(df_predicted_ttl_all, file=file.path(out_dir, "iter_predictions_ttl.csv"))
+  write.csv( data.frame(RPT=rownames(df_predicted_ttl_all), TIMETOEVENT=df_predicted_ttl_all$LKADT_P), file=file.path(out_dir, "submission_1b.csv"), row.names=FALSE)  
+  df_predicted_ttl <- df_predicted_ttl_all
   
- 
+  
+    
   #predict death
   #merge parts of data into one 
   aligned_data <-setup_data(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs, test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir)    
