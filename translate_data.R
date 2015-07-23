@@ -1,39 +1,4 @@
-
-save_rng <- function(savefile=tempfile()) {
-  if (exists(".Random.seed"))  {
-    oldseed <- get(".Random.seed", .GlobalEnv)
-  } else stop("don't know how to save before set.seed() or r*** call")
-  oldRNGkind <- RNGkind()
-  save("oldseed","oldRNGkind",file=savefile)
-  invisible(savefile)
-}
-
-most_frequent_factor <- function(x){
-  if (length(x) == 0) return(("-"))
-  result <- names(which.max(table(x)))
-  return( result)
-}
-
-restore_rng <- function(savefile) {
-  load(savefile)
-  do.call("RNGkind",as.list(oldRNGkind))  ## must be first!
-  assign(".Random.seed", oldseed, .GlobalEnv)
-}
-
-convert_to_yes_no_factor <- function(dataset_df, col_name){
-  dataset_df[, c(col_name)] <- as.factor(dataset_df[, c(col_name)] )
-  levels(dataset_df[, c(col_name)] ) <- c("YES", "NO")
-  return (dataset_df)
-}
-
-
-clean_names <- function(cols){
-  result <- gsub("-|\\s+|#|\\(|\\)|\\/|,|'","_", cols)
-  result <- gsub("_+","_", result)  
-  result <- gsub("^_","", result)  
-  result <- gsub("_$","", result)  
-  return (result)
-}
+source("./general_cleanup_helpers.R")
 
 calc_death_in_days <- function(time_period_in_days, row){
   
@@ -63,6 +28,14 @@ clean_labels <- function (train_ct){
   #Discont
   train_ct$DISCONT <- as.factor(train_ct$DISCONT)
   
+  #ENDTRS_C
+  train_ct$ENDTRS_C <- as.numeric(train_ct$ENDTRS_C)
+  
+  #DISCONT
+  train_ct$DISCONT <- as.factor(train_ct$DISCONT)
+  levels(train_ct$DISCONT) <- c( "0", "1", "-1")
+  train_ct$DISCONT[is.na( train_ct$DISCONT)] <- "-1" 
+  
   return(train_ct)
 }
 
@@ -76,174 +49,12 @@ add_label_death_within_days <- function(data, death_in_days, column_name){
   return(data)
 }
 
-merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs, outdir){
-  ## Merge all med information from multiple datasets into one large wide dataset
-  # merge train core table with lab value
-   #df_ct <- df_ct[,  c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC")]
-   df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
-   rownames(df_subset_merged) <- df_subset_merged$Row.names
-   df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))    
-   #df_subset_merged <- df_ct[, c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC","PSA", "HB", "BONE", "ALB", "ALP", "LDH", "LYMPH_NODES", "ECOG_C", "ANALGESICS", "GLUCOCORTICOID", "ESTROGENS", "TESTO")]
-   #df_subset_merged<-df_ct
-  
-  #merge Lesion measure
-  df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c(".ctlv", ".lm" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
-#   #merge medical history
-  df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c(".ctlvlm", ".mh" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-#   
-#   #merge vital signs
-  df_subset_merged <- merge(df_subset_merged, df_vs, by=0, all.x=TRUE, suffixes= c(".ctlvlmmh", ".vs" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
-#   
-#   #merge prior medications
-  df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
-  rownames(df_subset_merged) <- df_subset_merged$Row.names
-  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
-  
-  
-  return(df_subset_merged)
-  
-}
 
-make_factors_alike <- function(subset_train, subset_test){
-  library(futile.logger)
-  commonCols = Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
-  columns_to_remove =c()
-  for(c in commonCols){
-    if(is.double(subset_train[, c(c)]) & is.integer(subset_test[, c(c)])){
-      subset_test[, c(c)] = as.double(subset_test[, c(c)])
-      message <- paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)]), ". hence converting int to double")
-      flog.debug(message)
-    }
-    if(is.integer(subset_train[, c(c)]) & is.double(subset_test[, c(c)])){
-      subset_train[, c(c)] = as.double(subset_train[, c(c)])
-      message <- paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)]), ". hence converting int to double")
-      flog.debug(message)
-    }
-    
-    if(is.factor(subset_train[, c(c)]) & is.atomic(subset_test[, c(c)])){
-      subset_test[, c(c)] = as.factor(subset_test[, c(c)])
-      message <- paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)]), ". hence converting int to double")
-      flog.debug(message)
-    }
-    
-    if (typeof(subset_train[, c(c)]) != typeof(subset_test[, c(c)])){
-      message <- paste ("The type of", c, "train", typeof(subset_train[, c(c)]) , "does not match the type in test", typeof(subset_test[, c(c)]))
-      flog.warn(message)
-      columns_to_remove = c(columns_to_remove, c)
-      warning (message)   
-      next
-    }
-    
-    if (is.factor(subset_train[, c(c)])){
-      levels_in_test_and_train= Reduce(union, as.character(unique(subset_train[, c(c)])), as.character(unique(subset_test[, c(c)])))
-      levels_missing_in_test = setdiff(levels(subset_train[, c(c)]), levels(subset_test[, c(c)]))
-      levels_missing_in_train= setdiff(levels(subset_test[, c(c)]), levels(subset_train[, c(c)]))
-      
-      if (length(levels_missing_in_train) > 0){        
-        levels(subset_train[, c(c)]) <- c(levels(subset_train[, c(c)]), as.character(levels_missing_in_train))
-      }
-      if (length(levels_missing_in_test) > 0){       
-        levels(subset_test[, c(c)]) <- c(levels(subset_test[, c(c)]), as.character(levels_missing_in_test))
-      }   
-    }
-    
-  }#end of loop for each column
-  if (length(columns_to_remove) >0 ){
-    flog.warn("Removing columns due to type mismatch %s", columns_to_remove)
-    subset_test <- subset_test[, !colnames(subset_test) %in% columns_to_remove]
-    subset_train <- subset_train[, !colnames(subset_train) %in% columns_to_remove]
-  }
-  
-  return(list(train = subset_train, test = subset_test))
-}
 
 dependent_variables<- function(){
   return( c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC"))
 }
 
-remove_all_na_columns <- function(mydataframe){
- 
-  bad <- sapply(mydataframe, function(x) {    
-    all(is.na(x))
-    })
-  
-  flog.info("Removing columns with all NA %s",  colnames(mydataframe[,bad]))
-  return( mydataframe[,!bad])
-}
-
-remove_all_nan_columns <- function(mydataframe){
-  bad <- sapply(mydataframe, function(x) {all(is.nan(x))})
-  flog.info("Removing columns with all NAN %s",  colnames(mydataframe[,bad]))
-
-  return( mydataframe[,!bad])
-}
-
-align_test_train_data<- function(train, test, outdir){
-  library(futile.logger)
-   
-  subset_train <- train  
-  dependent_variables = dependent_variables()
-  subset_test <- test[, !colnames(test) %in% c("DOMAIN" , "STUDYID")]
-  
-  #remove columns with all NA
-  subset_train <-remove_all_nan_columns( remove_all_na_columns(subset_train))
-  subset_test <- remove_all_nan_columns(remove_all_na_columns(subset_test))
-  
-  #retain only columns common to both test and train
-  commonCols <- Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
-  commonCols  <- commonCols[!commonCols %in% c("DOMAIN", "STUDYID")]
-  subset_train <- subset_train[, Reduce(union, commonCols, dependent_variables)]
-  subset_test <- subset_test[, commonCols]
-  
-  
-  datasets_aligned_factors <-  make_factors_alike(subset_train, subset_test)
-  
-   
-  return(list(train = datasets_aligned_factors$train, test=datasets_aligned_factors$test, dependent_variables = dependent_variables))
-}
-
-align_test_train_data_old<- function(train_ct, train_lv, train_lm, train_mh, train_pm, train_vs,
-                                 test_ct, test_lv, test_lm, test_mh, test_pm, test_vs, outdir){
-  library(futile.logger)
-  #remove other labels, except for the label LKADT_P that is predicted, from the train set  
-  subset_train_ct <- train_ct
-  
-  dependent_variables = dependent_variables()
-  
-  
-  subset_train <- merge_all_data(subset_train_ct, train_lv, train_lm, train_mh, train_pm, train_vs)
-  #merge test, remove domain study columns as they are duplicates
-  subset_test <- test_ct[, !colnames(test_ct ) %in% c("DOMAIN" , "STUDYID")]
-  subset_test <- merge_all_data(subset_test, test_lv, test_lm, test_mh, test_pm, test_vs)
-  
-  
-  #remove columns with all NA
-  subset_train <-remove_all_nan_columns( remove_all_na_columns(subset_train))
-  subset_test <- remove_all_nan_columns(remove_all_na_columns(subset_test))
-  
-  #retain only columns common to both test and train
-  commonCols <- Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
-  commonCols  <- commonCols[!commonCols %in% c("DOMAIN", "STUDYID")]
-  #commonCols <- commonCols[1:6]
-  subset_train <- subset_train[, Reduce(union, commonCols, dependent_variables)]
-  subset_test <- subset_test[, commonCols]
-  
-  
-  datasets_aligned_factors <-  make_factors_alike(subset_train, subset_test)
-  #remove columns with all NA
-  subset_train <-remove_all_nan_columns( remove_all_na_columns(datasets_aligned_factors$train))
-  subset_test <- remove_all_nan_columns(remove_all_na_columns(datasets_aligned_factors$test))
-  
-  return(list(train = subset_train, test=subset_test, dependent_variables = dependent_variables))
-}
 
 log_datastructure <- function(subset_train, subset_test){
   print("TRAIN DATA SET STRUCTURE AFTER CLEAN UP")
@@ -254,89 +65,6 @@ log_datastructure <- function(subset_train, subset_test){
   print(dim(subset_test))
 }
 
-remove_duplicated_record <- function(data, cols){
-  library(futile.logger)
-  #remove duplicated lab results
-  duplicated_data <- duplicated(data[,  cols])
-  duplicate_count <-length (duplicated_data[duplicated_data == TRUE])
-  
-  if ( duplicate_count > 0){
-    warning(paste("Duplicates found:", duplicate_count,  "These will be removed!!", sep = " " ))
-    flog.warn("Duplicate lab result record keys found")
-    flog.debug(data[duplicated_data, cols])
-    data <- data[ !duplicated_data, ]
-  } 
-  
-  return(data)
-}
-
-flatten_long_to_wide = function(columns_to_flatten, longToWideFormula, longToWideIdKeyColumns, data, columns_agg_function = NULL){
-  library(futile.logger)
-  flog.info("Running function flatten_long_to_wide")
-#   if (!is.null(columns_agg_function)){
-#     df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1], fun.aggregate= columns_agg_function[[1]] )  
-#   }      
-#   else{
-#     df_flattened_so_far <- dcast(data,  longToWideFormula, value.var=columns_to_flatten[1] )  
-#   }
-#   
-#   #assign correct rownames and remove row name column
-#   rownames(df_flattened_so_far) <- df_flattened_so_far$RPT  
-#   df_flattened_so_far <- subset(df_flattened_so_far, select=-c(RPT))
-#   print(paste("is agg function null", is.null(columns_agg_function)))
-#   
-#   
-#   if (length(columns_to_flatten) == 1){
-#     return (df_flattened_so_far)
-#   }
-  
-  df_flattened_so_far = NULL
-  for(i in 1:length(columns_to_flatten)){
-    c = columns_to_flatten[i]
-   
-    #cast long to wide, value Start Event Date period value in days
-    if (!is.null(columns_agg_function)){
-      df_temp <- dcast(data,  longToWideFormula, value.var=c, fun.aggregate=columns_agg_function[[i]] )  
-    }      
-    else{
-      df_temp <- dcast(data,  longToWideFormula, value.var=c )  
-    }  
-    
-    #ensure character columns are converted to factors
-    cols_widened = colnames(df_temp)[ which(!colnames(df_temp) %in% longToWideIdKeyColumns)]
-    df_temp[, cols_widened] <- lapply(df_temp[, cols_widened], function(x){     
-      if (is.character(x)) return(as.factor(x))
-      return(x)
-    })
-   
-    #correct row names
-    rownames(df_temp) <- df_temp$RPT  
-    df_temp <- subset(df_temp, select=-c(RPT))
-   
-    #     ##Debug
-    #     print("#Debug - str(df_flattened_so_far)")
-    #     print(str(df_flattened_so_far))
-    #     print("#Debug - str(df_temp)")
-    #     print(str(df_temp))
-    
-   
-    if (is.null(df_flattened_so_far)){
-      df_flattened_so_far <- df_temp
-    }else {
-      #merge newly casted df and the previous df 
-      df_flattened_so_far <- merge(df_flattened_so_far, df_temp, by=0, all.x=TRUE, suffixes=c(paste("_", previous_col, sep=""), paste("_", c, sep="" ) ))
-      flog.trace(str(df_flattened_so_far,  list.len = 999))
-      #assign correct rownames and remove row name column
-      rownames(df_flattened_so_far) <- df_flattened_so_far$Row.names  
-      df_flattened_so_far <- subset(df_flattened_so_far, select=-c(Row.names)) 
-      
-    }
-    previous_col=c
-   
-  }
-  
-  return(df_flattened_so_far)
-}
 
 clean_ct_data <- function(train_ct){
   library(futile.logger)
@@ -700,6 +428,11 @@ clean_labvalue_data <- function(labvalue_data){
   library(reshape2)
   library(futile.logger)
   flog.info("Begin function clean_labvalue_data")
+  
+  if (nrow(labvalue_data) == 0){
+    warning("Labvalue data frame empty. Hence lab value values will not be used")
+    return (labvalue_data)
+  }
   
   #clean up data
   #remove rows with NA labresult

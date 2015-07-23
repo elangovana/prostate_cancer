@@ -114,3 +114,8 @@ score_q2<-function(pred,y)
   auc
 }
 
+#Calculates %correct for classfications predictions
+#expect 2 vectors
+score_classification <- function(actual, pred){
+  return ( (length(which(actual == pred) )*100)/length(pred))
+}

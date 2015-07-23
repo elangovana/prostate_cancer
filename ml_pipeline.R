@@ -441,3 +441,62 @@ ml_pipeline_part3 <- function(train_ct, train_lv, train_lm, train_mh, train_pm, 
   
   return (list(df_predicted=df_predicted_discontinuedreason, model_discontinuedreason= model_discontinuedreason ) )
 }
+
+merge_all_data <- function(df_ct, df_lv, df_lm, df_mh, df_pm, df_vs, outdir){
+  ## Merge all med information from multiple datasets into one large wide dataset
+  # merge train core table with lab value
+  #df_ct <- df_ct[,  c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC")]
+  df_subset_merged <- merge(df_ct, df_lv, by=0, all.x=TRUE, suffixes= c(".ct", ".lv" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))    
+  #df_subset_merged <- df_ct[, c("LKADT_P", "DEATH", "DISCONT",  "ENDTRS_C",  "ENTRT_PC","PSA", "HB", "BONE", "ALB", "ALP", "LDH", "LYMPH_NODES", "ECOG_C", "ANALGESICS", "GLUCOCORTICOID", "ESTROGENS", "TESTO")]
+  #df_subset_merged<-df_ct
+  
+  #merge Lesion measure
+  df_subset_merged <- merge(df_subset_merged, df_lm, by=0, all.x=TRUE, suffixes= c(".ctlv", ".lm" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+  #   #merge medical history
+  df_subset_merged <- merge(df_subset_merged, df_mh, by=0, all.x=TRUE, suffixes= c(".ctlvlm", ".mh" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  #   
+  #   #merge vital signs
+  df_subset_merged <- merge(df_subset_merged, df_vs, by=0, all.x=TRUE, suffixes= c(".ctlvlmmh", ".vs" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+  #   
+  #   #merge prior medications
+  df_subset_merged <- merge(df_subset_merged, df_pm, by=0, all.x=TRUE, suffixes= c(".ctlvlmmhpm", ".pm" ))
+  rownames(df_subset_merged) <- df_subset_merged$Row.names
+  df_subset_merged <- subset(df_subset_merged, select=-c(Row.names))
+  
+  
+  return(df_subset_merged)
+  
+}
+align_test_train_data<- function(train, test, outdir){
+  library(futile.logger)
+  
+  subset_train <- train  
+  dependent_variables = dependent_variables()
+  subset_test <- test[, !colnames(test) %in% c("DOMAIN" , "STUDYID")]
+  
+  #remove columns with all NA
+  subset_train <-remove_all_nan_columns( remove_all_na_columns(subset_train))
+  subset_test <- remove_all_nan_columns(remove_all_na_columns(subset_test))
+  
+  #retain only columns common to both test and train
+  commonCols <- Reduce(intersect, list(colnames(subset_train), colnames(subset_test)))
+  commonCols  <- commonCols[!commonCols %in% c("DOMAIN", "STUDYID")]
+  subset_train <- subset_train[, Reduce(union, commonCols, dependent_variables)]
+  subset_test <- subset_test[, commonCols]
+  
+  
+  datasets_aligned_factors <-  make_factors_alike(subset_train, subset_test)
+  
+  
+  return(list(train = datasets_aligned_factors$train, test=datasets_aligned_factors$test, dependent_variables = dependent_variables))
+}

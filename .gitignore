@@ -6,6 +6,7 @@ test.csv
 train.csv
 testroughfix.csv
 out_dat
+outdat
 outdat_trainmode
 survival_calc.R
 labvalue_result.csv
