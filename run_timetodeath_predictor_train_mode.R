@@ -19,7 +19,7 @@ rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
 #rows_in_train = c(1:200, 301:700, 801:1000)
 rows_in_test = c(201:300,701:800,1301:1400)
 #rows_in_test = c(1301:1400)
-#rows_in_train = c(1401:1600)
+#rows_in_train = c(1:200)
 #rows_in_test = c(201:300)
 
 source("./challenge_data.R")

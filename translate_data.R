@@ -417,7 +417,7 @@ clean_ct_data <- function(train_ct){
   train_ct$PSA <- log2(train_ct$PSA)
   train_ct$PSA[ is.infinite(train_ct$PSA) ]<- 0
   
-   columns_to_ignore = c("PER_REF",  "LKADT_REF")
+   columns_to_ignore = c("PER_REF",  "LKADT_REF", "STUDYID", "DOMAIN")
    train_ct <- train_ct[, !colnames(train_ct) %in% columns_to_ignore]
   return(train_ct)
   

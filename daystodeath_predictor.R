@@ -1,7 +1,7 @@
 source("./generic_s3_methods.R")
 
 # Discontinued reason model
-daystodeath_predictor <- function(challenge_data_train, challenge_data_test,  out_dir, seed_files=NULL, rseeds_out_dir="./random_seeds", mtry=15, ntree=250){
+daystodeath_predictor <- function(challenge_data_train, challenge_data_test,  out_dir, seed_files=NULL, rseeds_out_dir="./random_seeds", mtry=15, ntree=150){
   #######todo validate
   #x must contain ENTRT_PC column
   
