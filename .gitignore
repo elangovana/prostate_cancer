@@ -13,3 +13,4 @@ survival_calc.R
 labvalue_result.csv
 .DS_Store
 .Rhistory
+packrat/lib*/
