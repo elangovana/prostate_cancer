@@ -8,6 +8,7 @@ setup_log(out_dir)
 flog.threshold(INFO)
 set_options()
 
+g_seed_files=c("./random_seeds/model_survivalanalysis_risk_scorer.seed", "./random_seeds/model_survivalanalysis_risk_scorer.seed")
 input_data_dir = "./input_dat"
 input_data_train_dir = file.path(input_data_dir, "training")
 input_data_test_dir = file.path(input_data_dir, "leaderboard")
@@ -22,5 +23,5 @@ test_challenge_data <- challenge_data(input_data_test_dir , "_leaderboard.csv")
 
 
 source("./survivalanalysis_risk_scorer.R")
-predictor <- survivalanalysis_risk_scorer(train_challenge_data, test_challenge_data,  out_dir)
+predictor <- survivalanalysis_risk_scorer(train_challenge_data, test_challenge_data, seed_files=g_seed_files,  out_dir)
 run_pipeline(predictor)

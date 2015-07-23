@@ -1,4 +1,5 @@
-packrat/lib*/
+packrat/lib*
+packrat/src
 .Rproj.user
 input_dat/*
 testdata.csv
