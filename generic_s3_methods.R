@@ -44,6 +44,12 @@ score_model <- function(x){
   else  UseMethod("score_model", x)
 }
 
+get_random_seed <- function(x, index){
+  if(is.null(attr(x, "class"))){
+    stop("Not a class")
+  }
+  else  UseMethod("get_random_seed")
+}
 
 cleanup.default <- cleanup
 run_pipeline.default <- run_pipeline
@@ -51,3 +57,4 @@ flatten.default <- flatten
 model.default <- model
 write_to_file.default <- write_to_file
 score_model.default <- score_model
+get_random_seed.default <- get_random_seed

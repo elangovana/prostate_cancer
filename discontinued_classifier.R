@@ -1,14 +1,17 @@
 source("./generic_s3_methods.R")
 
+
+
 # Discontinued reason model
-discontinued_classifier <- function(challenge_data_train, challenge_data_test, discont_in_days, out_dir, seed_file="", mtry=15, ntree=250){
+discontinued_classifier <- function(challenge_data_train, challenge_data_test, discont_in_days, out_dir, seed_files=NULL, rseeds_out_dir="./random_seeds", mtry=25, ntree=1000){
   #######todo validate
   #x must contain ENTRT_PC column
   
   ####output
   out <- list(challenge_data_train = challenge_data_train, 
               challenge_data_test = challenge_data_test,
-              seed_file = seed_file,
+              seed_files = seed_files,
+              rseeds_out_dir = rseeds_out_dir,
               mtry=mtry,
               ntree=ntree,
               x=NULL,
@@ -74,9 +77,19 @@ cleanup.discontinued_classifier <- function(object){
     challenge_data$lv <- data.frame()
     challenge_data$mh <- data.frame()
     challenge_data$vs <- data.frame()
-    challenge_data$pm <- data.frame()
+   # challenge_data$pm <- data.frame()
     return(challenge_data)
   }
+  
+ 
+  
+  #discontinued is undersamppled.. so remove sampled randomly 
+  n_row_names_of_discontinued <- rownames(challenge_data_train$ycols)[as.character(challenge_data_train$ycols$DISCONT) == "1"]
+  df_not_discontinued <- challenge_data_train$ct[ ! rownames(challenge_data_train$ct) %in% n_row_names_of_discontinued, ]
+  get_random_seed(object, seed_file_index.discontinued_classifier()$sample)
+  df_not_discontinued <- df_not_discontinued[sample(nrow(df_not_discontinued), length(n_row_names_of_discontinued)*2), ]
+  challenge_data_train$ct <- rbind(df_not_discontinued, challenge_data_train$ct[n_row_names_of_discontinued, ])
+  
   
   #merge parts of data into one df
   challenge_data_train <- merge(get_relevant_dataset(challenge_data_train))
@@ -92,6 +105,8 @@ cleanup.discontinued_classifier <- function(object){
   object$y <-  y
   
   object$new_data <- aligned_train_test$df_test
+  object$challenge_data_train <- challenge_data_train
+  object$challenge_data_test <- challenge_data_test
   
   #cleanup train  
   flog.info("End cleanup.discontinued_classifier")  
@@ -114,15 +129,10 @@ model.discontinued_classifier <- function(object){
   x <- object$x
   y <- object$y
   
-  #### House keeping
-  #set up seed file
-  if (object$seed_file != ""){
-    restore_rng(object$seed_file)
-  }else{
-    set.seed(NULL)
-    save_rng(file.path(object$out_dir, paste( "discontinued_classifier_model_", format(Sys.time(), "%Y%m%d_%H%M%S"),".seed", sep="")))
-  }
+ 
   
+  
+  get_random_seed(object, seed_file_index.discontinued_classifier()$randomforest)
   ####model using randomforest
   fit <- randomForest(na.roughfix(x), y, mtry=object$mtry, ntree=object$ntree, importance=TRUE)
   print("Random forest fit")
@@ -209,10 +219,10 @@ summary.discontinued_classifier <- function(object){
   print("dim new_data")
   print(dim(object$new_data))
   print(paste("Discontinued in ", object$discont_in_days, sep=""))
-#   print("summary train")
-#   summary(object$challenge_data_train)
-#   print("summary test")
-#   summary(object$challenge_data_test)
+   print("summary train")
+   summary(object$challenge_data_train)
+   print("summary test")
+   summary(object$challenge_data_test)
   print("summary fit")
   print(object$fit)
   print("scores for x predictions")
@@ -221,6 +231,30 @@ summary.discontinued_classifier <- function(object){
   print(object$new_data_predictions_score)
 }
 
+seed_file_index.discontinued_classifier <- function(){
+  list(sampler = 1, randomforest=2)
+}
+
+get_random_seed.discontinued_classifier <- function(object, index){
+  restore = FALSE;
+  if (!is.null(object$seed_files)){
+    if (!is.na(object$seed_files[index])){
+      restore = TRUE
+    }
+  }
+  if ( restore){
+    flog.info("Restoring seed file %s", object$seed_files[index])
+    restore_rng(object$seed_files[index])
+  }else{
+    flog.info("Using new seed file for index %s", index)
+    set.seed(NULL)
+    seed_file_prefix <-  as.character(sys.calls()[[sys.nframe()-2]])[1]
+    print(seed_file_prefix)
+    save_rng(file.path(object$out_dir, paste(seed_file_prefix,"_", index,".seed", sep="")))
+    save_rng(file.path(object$rseeds_out_dir, paste(seed_file_prefix,"_", index,".seed", sep="")))
+    
+  }
+}
 
 predict.discontinued_classifier <- function(object, newdata){
   return( predict(object$fit, na.roughfix(object$new_data) ))

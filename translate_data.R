@@ -25,11 +25,11 @@ clean_labels <- function (train_ct){
   levels(train_ct$DEATH) <- c("YES", "CENSORED")
   train_ct$DEATH[is.na( train_ct$DEATH)] <- "CENSORED" 
  
-  #Discont
-  train_ct$DISCONT <- as.factor(train_ct$DISCONT)
-  
   #ENDTRS_C
-  train_ct$ENDTRS_C <- as.numeric(train_ct$ENDTRS_C)
+  train_ct$ENDTRS_C <- as.factor(train_ct$ENDTRS_C)
+  
+  #ENTRT_PC
+  train_ct$ENTRT_PC <- as.numeric(train_ct$ENTRT_PC)
   
   #DISCONT
   train_ct$DISCONT <- as.factor(train_ct$DISCONT)

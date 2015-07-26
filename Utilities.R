@@ -2,12 +2,14 @@ library("futile.logger")
 source("./generic_s3_methods.R")
 source("./score.R")
 
-plot_survival <- function(time, events){
-  library(survival)
-  
+plot_kaplan_meier_survival <- function(time, events, plotfile){
+  library(survival)  
   kaplan_meier <- survfit(Surv(time, events) ~ 1)
-  #print(summary(kaplan_meier))
-  #plot(kaplan_meier)
+  print(summary(kaplan_meier))
+  pdf(plotfile)
+  plot(kaplan_meier)
+  dev.off()
+  
 }
 
 most_frequent_factor <- function(x){
@@ -44,7 +46,16 @@ restore_rng <- function(savefile) {
 }
 
 
-
+get_seed <- function(index){
+  if (!is.null(object$seed_files) ){
+    restore_rng(object$seed_file[index])
+  }else{
+    set.seed(NULL)
+    save_rng(file.path(object$out_dir, paste("cleanup.discontinued_classifier",index,".seed", sep="")))
+    save_rng(file.path(object$rseeds_out_dir, paste("cleanup.discontinued_classifier",index,".seed", sep="")))
+    
+  }
+}
 
 set_options <- function(){
   options(warning.length = 5000)
