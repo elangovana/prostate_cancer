@@ -31,11 +31,11 @@ run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputf
 
 To run in test mode to predict time to event for the test or leaderboard data
 
-run_timetodeath_predictor_test_mode.r inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
+run_timetodeath_predictor_test_mode.R inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
 
  e.g
  
- `R --no-save --args ./training_data  _training.csv ./FinalScoringSet _FinalScoringSet.csv  outdir < run_timetodeath_predictor_test_mode.r`
+ `R --no-save --args ./training_data  _training.csv ./FinalScoringSet _FinalScoringSet.csv  outdir < run_timetodeath_predictor_test_mode.R`
    
 - All errors would be logged in the runall.log file, found in the output directory specified in the argument
 - If the run is successful, the submission file submission1b.csv, can be found in the subfolder with prefix daystodeath_predictor... within the output directory 
