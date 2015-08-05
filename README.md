@@ -10,12 +10,13 @@
     - packrat::init()
     - packrat::restore()
 
-## How to run
+## Expected files formats and naming conventions
 This scripts expects input train and test file names exactly the same convention as defined in the challenge data from synapse.
 
 ## Run sub challenge 1a -  Relative risk score for patients.
 
 To run in test mode to predict scores for the test or leaderboard data
+
     - run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
 
  e.g
@@ -25,9 +26,12 @@ To run in test mode to predict scores for the test or leaderboard data
 - All errors would be logged in the runall.log file, found in the output directory specified in the argument
 - If the run is successful, the submission file submission1a.csv, can be in the subfolder survivalanalysis_risk_scorer... within the output directory
 
+
+
 ## Run sub challenge 1b -  time to event for patients.
 
 To run in test mode to predict time to event for the test or leaderboard data
+
     - run_timetodeath_predictor_test_mode.r inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
 
  e.g
