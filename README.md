@@ -19,7 +19,7 @@ This scripts expects input train and test file names exactly the same convention
     - run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
 
  e.g
- `R --no-save --args ./training_data  _training.csv ./FinalScoringSet _FinalScoringSet.csv  outdir < run_survivalanalysisriskscore_test_mode.R'
+ `R --no-save --args ./training_data  _training.csv ./FinalScoringSet _FinalScoringSet.csv  outdir < run_survivalanalysisriskscore_test_mode.R`
    
 
 
