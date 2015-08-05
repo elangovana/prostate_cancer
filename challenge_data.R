@@ -96,6 +96,20 @@ cleanup.challenge_data <- function(object){
   return(object)
 }
 
+rbind.challenge_data  <- function(object, cdata2){
+  object$ct <- rbind(object$ct, cdata2$ct)
+  object$lv <- rbind(object$lv, cdata2$lv)
+  object$lm <- rbind(object$lm, cdata2$lm)
+  object$vs <- rbind(object$vs, cdata2$vs)
+  object$pm <- rbind(object$pm, cdata2$pm)
+  object$mh <- rbind(object$mh, cdata2$mh)
+  
+  object$merged_data <- NULL
+  object$ycols <- rbind(object$ycols, cdata2$ycols)
+    
+  return(object)
+}
+
 #merges multiple challenge data sets into one
 merge.challenge_data <- function(object){
   

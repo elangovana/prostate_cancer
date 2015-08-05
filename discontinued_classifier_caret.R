@@ -73,34 +73,34 @@ cleanup.discontinued_classifier <- function(object){
   
   #remove data that is not used before merge, nullify data sets that r not used
   get_relevant_dataset <- function(challenge_data){  
-  #  challenge_data$lm <- data.frame()
-  # challenge_data$lv <- data.frame()
-  #  challenge_data$mh <- data.frame()
-  #  challenge_data$vs <- data.frame()
-   # challenge_data$pm <- data.frame()
+     # challenge_data$lm <- data.frame()
+     challenge_data$lv <- data.frame()
+     # challenge_data$mh <- data.frame()
+      challenge_data$vs <- data.frame()
+    # challenge_data$pm <- data.frame()
     return(challenge_data)
   }
   
- 
+  
   challenge_data_train$ct <- challenge_data_train$ct[rownames(challenge_data_train$ycols)[!is.na(challenge_data_train$ycols$DISCONT)], ]
   
- 
+  
   #discontinued is undersamppled.. so remove sampled randomly 
-#   n_row_names_of_discontinued <- rownames(challenge_data_train$ycols)[as.character(challenge_data_train$ycols$DISCONT) == "1"]
-#   df_not_discontinued <- challenge_data_train$ct[ ! rownames(challenge_data_train$ct) %in% n_row_names_of_discontinued, ]  
-#   get_random_seed(object, seed_file_index.discontinued_classifier()$sample)
-#   df_not_discontinued <- df_not_discontinued[sample(nrow(df_not_discontinued), floor(length(challenge_data_train$ct[rownames(challenge_data_train$ct) %in% n_row_names_of_discontinued, ])*1.5) ), ]  
-#   challenge_data_train$ct <- rbind(df_not_discontinued, challenge_data_train$ct[rownames(challenge_data_train$ct) %in% n_row_names_of_discontinued, ])
-#  
+  #   n_row_names_of_discontinued <- rownames(challenge_data_train$ycols)[as.character(challenge_data_train$ycols$DISCONT) == "1"]
+  #   df_not_discontinued <- challenge_data_train$ct[ ! rownames(challenge_data_train$ct) %in% n_row_names_of_discontinued, ]  
+  #   get_random_seed(object, seed_file_index.discontinued_classifier()$sample)
+  #   df_not_discontinued <- df_not_discontinued[sample(nrow(df_not_discontinued), floor(length(challenge_data_train$ct[rownames(challenge_data_train$ct) %in% n_row_names_of_discontinued, ])*1.5) ), ]  
+  #   challenge_data_train$ct <- rbind(df_not_discontinued, challenge_data_train$ct[rownames(challenge_data_train$ct) %in% n_row_names_of_discontinued, ])
+  #  
   #merge parts of data into one df
   challenge_data_train <- merge(get_relevant_dataset(challenge_data_train))
   challenge_data_test <- merge(get_relevant_dataset(challenge_data_test))
-    
+  
   aligned_train_test <- align_train_test(challenge_data_train$merged_data, challenge_data_test$merged_data)
- 
+  
   ##assign the final, x, y and test new data after cleanup.
   object$x <-  aligned_train_test$df_train  
-
+  
   y <- ycols[rownames(object$x), "DISCONT"]
   
   names(y) <- rownames(object$x)
@@ -123,27 +123,40 @@ cleanup.discontinued_classifier <- function(object){
 #This models the data using randomforest
 model.discontinued_classifier <- function(object){
   flog.info("Begin model.discontinued_classifier")
+  library("caret")
   library("randomForest")
-  
   if (is.null(object$x) | is.null(object$y)){
     stop("Please run cleanup before model is called")
   }
   x <- object$x
   y <- object$y
   
- 
-  
-  
   get_random_seed(object, seed_file_index.discontinued_classifier()$randomforest)
+  nmin <- sum(y == "One")
+  ctrl <- trainControl(method = "none",
+                       classProbs = TRUE,
+                       summaryFunction = twoClassSummary)
+  fit <- train(x= randomForest::na.roughfix(x), y=y,
+                         method = "rf",
+                         ntree = 1500,
+                         tuneGrid = data.frame(mtry=object$mtry),
+                         metric = "ROC",
+                         trControl = ctrl,
+                         strata = y,
+                         sampsize = rep(nmin, 2))
   ####model using randomforest
-  fit <- randomForest(na.roughfix(x), y, mtry=object$mtry, ntree=object$ntree, importance=TRUE)
+  #fit <- randomForest(na.roughfix(x), y, mtry=object$mtry, ntree=object$ntree, importance=TRUE)
   print("Random forest fit")
   print(fit)
   
   get_predictions <- function(rfit, data){
-   risk_score <- predict(rfit, data, type="prob" )[, "1"]
-   category <- predict(rfit, data)
-   data.frame(RISK_SCORE = risk_score, DISCONT =category[names(risk_score)], row.names=names(risk_score) )
+    pred <-  predict(rfit, data, type="prob" )
+    risk_score <- pred[, "One"]
+    category <- predict(rfit, data)
+    print(head(risk_score))
+    print(head(category))
+    print(head(pred))
+    data.frame(RISK_SCORE = risk_score, DISCONT =category, row.names=rownames(data) )
   }
   ####output
   object$fit <- fit
@@ -175,22 +188,22 @@ score_model.discontinued_classifier <- function(object){
 
 #This writes all data into file
 write_to_file.discontinued_classifier <- function(object){
- #if data is clean, write x & y
+  #if data is clean, write x & y
   if (!is.null(object$x)){
     write.csv(merge_data_frame_with_named_vector(merge_data_frame_by_rows(object$x, object$challenge_data_train$ycols), object$y), file=file.path(object$out_dir, "inputdata_x.csv"))
   }
   
   #if model is available, save importance measure
-  if (!is.null(object$fit)){
-    write.csv( importance(object$fit) , file=file.path(object$out_dir, "importanceFit.csv")) 
-  }
+#   if (!is.null(object$fit)){
+#     write.csv( importance(object$fit) , file=file.path(object$out_dir, "importanceFit.csv")) 
+#   }
   
   #if x_predictions are is available, save actual & predicted
   if (!is.null(object$x_predictions)){
     write.csv( merge_data_frame_by_rows(merge_data_frame_with_named_vector(object$x, object$y), object$x_predictions, suffixes = c(".actual", ".pred") ), 
                file=file.path(object$out_dir, "inputdata_x_predictions.csv")) 
   }
-    
+  
   #write predictions
   if (!is.null(object$new_data_predictions)){
     ##special case if running in train mode, merge predicted new data with actual
@@ -201,10 +214,10 @@ write_to_file.discontinued_classifier <- function(object){
     write.csv( merge_data_frame_by_rows(data, object$new_data_predictions, suffixes = c(".actual", ".pred") ), 
                file=file.path(object$out_dir, "new_data_predictions.csv")) 
     
-    write.csv( RPT=rownames(object$new_data_predictions), RISK=object$new_data_predictions$RISK_SCORE, DISCONT=object$new_data_predictions$DISCONT ), 
-               file=file.path(object$out_dir, "submission2.csv")) 
+    write.csv(data.frame( RPT=rownames(object$new_data_predictions), RISK=object$new_data_predictions$RISK_SCORE, DISCONT=ifelse(as.character(object$new_data_predictions$DISCONT)=="Zero", 0, 1) ), 
+    file=file.path(object$out_dir, "submission2.csv"), row.names=FALSE) 
   }
-    
+  
 }
 
 
@@ -231,16 +244,16 @@ summary.discontinued_classifier <- function(object){
   print("dim new_data")
   print(dim(object$new_data))
   print(paste("Discontinued in ", object$discont_in_days, sep=""))
-   print("summary train")
-   summary(object$challenge_data_train)
-   print("summary test")
-   summary(object$challenge_data_test)
+  print("summary train")
+  summary(object$challenge_data_train)
+  print("summary test")
+  summary(object$challenge_data_test)
   print("summary fit")
   print(object$fit)
   print(paste("scores for x predictions :", object$x_predictions_score ))
   
   print(paste("scores for new data predictions :", object$new_data_predictions_score))
-
+  
 }
 
 seed_file_index.discontinued_classifier <- function(){

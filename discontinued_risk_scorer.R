@@ -56,16 +56,6 @@ run_pipeline.discontinued_risk_scorer <- function(object){
   
 }
 
-calc_event.discontinued_risk_scorer <- function(yrow, discontin_in_days){
-  
-  if (is.na(yrow["ENTRT_PC"])) return(NA) 
-  
-  
-  if((as.character(yrow["ENDTRS_C"])  %in% c( "AE" , "possible_AE" )) & (as.character(yrow["DISCONT"])=="1")){
-    return(1)
-  }
-  return(0)
-}
 
 #This cleans up data, most boring but complicated
 cleanup.discontinued_risk_scorer <- function(object){
@@ -91,8 +81,8 @@ cleanup.discontinued_risk_scorer <- function(object){
   
   
   
-  #remove values with ENTRT_PC blank
-  challenge_data_train$ct <- challenge_data_train$ct[rownames(challenge_data_train$ycols)[!is.na(challenge_data_train$ycols$ENTRT_PC)], ]
+  #remove values with DISCONT blank
+  challenge_data_train$ct <- challenge_data_train$ct[rownames(challenge_data_train$ycols)[as.character(challenge_data_train$ycols$DISCONT) =="-1"], ]
   
   
   #discontinued is undersamppled.. so remove sampled randomly 
@@ -177,7 +167,7 @@ model.discontinued_risk_scorer <- function(object){
   print(formula)
   
   # Step 3a - Run profiler to get optimal lamba to avoid local minima   
-  x$EVENT <-  as.integer( y[rownames(x), "EVENT"])
+  x$EVENT <-  y[rownames(x), "DISCONT"]
   x$ENTRT_PC <- y[rownames(x), "ENTRT_PC"]
 
   write.csv(data.frame(event = x$EVENT, time=  x$ENTRT_PC), file=file.path(object$out_dir, "event vs time.csv"))
@@ -217,7 +207,7 @@ score_model.discontinued_risk_scorer <- function(object){
   #run test score if running in test mode
   if (!is.null(object$challenge_data_test$ycols)){
     
-    actual <- apply(object$challenge_data_test$ycols, 1, function(a){calc_event.discontinued_risk_scorer(a, object$discont_in_days)})    
+    actual <- object$challenge_data_test$ycols$DISCONT #apply(object$challenge_data_test$ycols, 1, function(a){calc_event.discontinued_risk_scorer(a, object$discont_in_days)})    
     names(actual) <- rownames(object$challenge_data_test$ycols)  
     
     object$new_data_predictions_score <- score_q2(object$new_data_predictions, actual[names(object$new_data_predictions)])    
@@ -248,6 +238,9 @@ write_to_file.discontinued_risk_scorer <- function(object){
     }
     write.csv( merge_data_frame_with_named_vector(data, object$new_data_predictions, suffixes = c(".actual", ".pred") ), 
                file=file.path(object$out_dir, "new_data_predictions.csv")) 
+    
+    write.csv( RPT=rownames(object$new_data_predictions), RISK=object$new_data_predictions$RISK_SCORE, DISCONT=ifelse(as.character(object$new_data_predictions$DISCONT)=="Zero", 0, 1), 
+    file=file.path(object$out_dir, "submission2.csv")) 
   }
   
 }

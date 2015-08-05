@@ -33,8 +33,8 @@ clean_labels <- function (train_ct){
   
   #DISCONT
   train_ct$DISCONT <- as.factor(train_ct$DISCONT)
-  levels(train_ct$DISCONT) <- c( "0", "1", "-1")
-  train_ct$DISCONT[is.na( train_ct$DISCONT)] <- "-1" 
+  levels(train_ct$DISCONT) <- c( "Zero", "One")
+#  train_ct$DISCONT[is.na( train_ct$DISCONT)] <- "-1" 
   
   return(train_ct)
 }
