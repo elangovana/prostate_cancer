@@ -7,8 +7,8 @@
 ## Set up
 1. Start up an R session and set up the working directory to this projects root.
 2. To install all packages used by this project, in R terminal run the following command
-    packrat::init()
-    packrat::restore()
+    - packrat::init()
+    - packrat::restore()
 
 ## How to run
 This scripts expects input train and test file names exactly the same convention as defined in the challenge data from synapse.
@@ -16,10 +16,10 @@ This scripts expects input train and test file names exactly the same convention
 ### Run sub challenge 1a -  Relative risk score for patients.
 
 1. To run in test mode to predict scores for the test or leaderboard data
-    run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
+    - run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
 
     e.g
-    run_survivalanalysisriskscore_test_mode.R ./training_data training ./finalscore_data finalscore outdir
+   - run_survivalanalysisriskscore_test_mode.R ./training_data training ./finalscore_data finalscore outdir
 
 
 
