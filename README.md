@@ -27,7 +27,7 @@ run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputf
 
 
 
-## Run sub challenge 1b -  time to event for patients.
+## Run sub challenge 1b -  Time to event for patients.
 
 To run in test mode to predict time to event for the test or leaderboard data
 
