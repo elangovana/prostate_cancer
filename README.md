@@ -7,8 +7,8 @@
 ## Set up
 1. Start up an R session and set up the working directory to this projects root.
 2. To install all packages used by this project, in R terminal run the following command
-    a) packrat::init()
-    b) packrat::restore()
+    packrat::init()
+    packrat::restore()
 
 ## How to run
 This scripts expects input train and test file names exactly the same convention as defined in the challenge data from synapse.
