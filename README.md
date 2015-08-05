@@ -1,7 +1,15 @@
 # Dream challenge prostate cancer
 
+## Pre requisites
+1. Install R
+2. Install synapseClient as detailed in https://sagebionetworks.jira.com/wiki/display/SYNR/How+to+install+the+Synapse+R+Client
+
 ## Set up
 This is an R project that uses packrat for package management.
+1. Start up an R session and set up the working directory to this projects root.
+2. To install all packages used by this project, in R terminal run the following command
+    a) packrat::init()
+    b) packrat::restore()
 
 ## How to run
 ### Run sub challenge 1a -  Relative risk score for patients.
