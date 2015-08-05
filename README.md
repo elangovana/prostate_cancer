@@ -9,15 +9,14 @@
 2. To install all packages used by this project, in R terminal run the following command
     - packrat::init()
     - packrat::restore()
+3. This scripts expects input train and test file names exactly the same convention as defined in the challenge data from synapse.
 
-## Expected files formats and naming conventions
-This scripts expects input train and test file names exactly the same convention as defined in the challenge data from synapse.
 
 ## Run sub challenge 1a -  Relative risk score for patients.
 
 To run in test mode to predict scores for the test or leaderboard data
 
-    - run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
+run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
 
  e.g
  
@@ -32,7 +31,7 @@ To run in test mode to predict scores for the test or leaderboard data
 
 To run in test mode to predict time to event for the test or leaderboard data
 
-    - run_timetodeath_predictor_test_mode.r inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
+run_timetodeath_predictor_test_mode.r inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
 
  e.g
  
