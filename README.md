@@ -6,7 +6,7 @@
 
 ## Set up
 1. Start up an R session and set up the working directory to this projects root.
-2. To install all packages used by this project, in R terminal run the following command
+2. To install all packages used by this project, in R terminal run the following commands
     - packrat::init()
     - packrat::restore()
 3. This scripts expects input train and test file names exactly the same convention as defined in the challenge data from synapse.
@@ -23,7 +23,7 @@ run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputf
  `R --no-save --args ./training_data  _training.csv ./FinalScoringSet _FinalScoringSet.csv  outdir < run_survivalanalysisriskscore_test_mode.R`
    
 - All errors would be logged in the runall.log file, found in the output directory specified in the argument
-- If the run is successful, the submission file submission1a.csv, can be in the subfolder survivalanalysis_risk_scorer... within the output directory
+- If the run is successful, the submission file submission1a.csv, can be found in the subfolder survivalanalysis_risk_scorer... within the output directory
 
 
 
@@ -38,7 +38,7 @@ run_timetodeath_predictor_test_mode.r inputtrainingdatadir filesuffix inputfinal
  `R --no-save --args ./training_data  _training.csv ./FinalScoringSet _FinalScoringSet.csv  outdir < run_timetodeath_predictor_test_mode.r`
    
 - All errors would be logged in the runall.log file, found in the output directory specified in the argument
-- If the run is successful, the submission file submission1b.csv, can be in the subfolder with prefix daystodeath_predictor... within the output directory 
+- If the run is successful, the submission file submission1b.csv, can be found in the subfolder with prefix daystodeath_predictor... within the output directory 
 
 
 
