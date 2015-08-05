@@ -32,7 +32,7 @@ g_test_files_suffix = args[4]
 
 rows_in_train = c(1401:1600)
 #rows_in_train = c(1:200, 301:700, 801:1300,1401:1600)
-#rows_in_train=NULL
+rows_in_train=NULL
 
 source("./challenge_data.R")
 train_challenge_data <- challenge_data(input_data_train_dir, g_train_files_suffix , rows_in_train)
