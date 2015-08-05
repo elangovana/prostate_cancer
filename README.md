@@ -19,7 +19,11 @@ This scripts expects input train and test file names exactly the same convention
 
 1. To run in test mode to predict scores for the test or leaderboard data
 Specify the input directory
-run_survivalanalysisriskscore_test_mode.R <inputtrainingdatadir> <filesuffix> <inputfinalscoredatadir> <filesuffix> <outdir>
+run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
+
+e.g
+run_survivalanalysisriskscore_test_mode.R ./training_data training ./finalscore_data finalscore outdir
+
 
 
 
