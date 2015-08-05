@@ -18,8 +18,8 @@ This scripts expects input train and test file names exactly the same convention
 1. To run in test mode to predict scores for the test or leaderboard data
     - run_survivalanalysisriskscore_test_mode.R inputtrainingdatadir filesuffix inputfinalscoredatadir filesuffix outdir
 
-    e.g
-    - R --no-save --args ./training_data   training  ./finalscore_data   finalscore    outdir < run_survivalanalysisriskscore_test_mode.R 
+ e.g
+ `R --no-save --args ./training_data  _training.csv ./FinalScoringSet _FinalScoringSet.csv  outdir < run_survivalanalysisriskscore_test_mode.R'
    
 
 
