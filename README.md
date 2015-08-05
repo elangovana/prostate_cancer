@@ -2,7 +2,7 @@
 
 ## Pre requisites
 1. Install R
-2. Install synapseClient as detailed in https://sagebionetworks.jira.com/wiki/display/SYNR/How+to+install+the+Synapse+R+Client
+2. Download the training, leaderboard & final scoring set data from https://www.synapse.org/#!Synapse:syn3325825
 
 ## Set up
 1. Start up an R session and set up the working directory to this projects root.
@@ -13,11 +13,13 @@
     b) packrat::restore()
 
 ## How to run
+This scripts expects input train and test file names exactly the same convention as defined in the challenge data from synapse.
+
 ### Run sub challenge 1a -  Relative risk score for patients.
 
 1. To run in test mode to predict scores for the test or leaderboard data
-
-run_survivalanalysisriskscore_test_mode.R <inputtraindatadir> <inputtestdatadir> <outputdir> 
+Specify the input directory
+run_survivalanalysisriskscore_test_mode.R <inputtrainingdatadir> <filesuffix> <inputfinalscoredatadir> <filesuffix> <outdir>
 
 
 
