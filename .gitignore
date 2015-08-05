@@ -16,3 +16,5 @@ labvalue_result.csv
 packrat/lib*/
 analyis
 packrat/src/
+output_data
+outdir
