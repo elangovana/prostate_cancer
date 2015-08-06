@@ -1,7 +1,7 @@
 # Dream challenge prostate cancer
 
 ## Pre requisites
-1. Install R
+1. Install R 3.1.0 (Make sure this exact version of R is installed for automatic package restore from packrat to work)
 2. Download the training, leaderboard & final scoring set data from https://www.synapse.org/#!Synapse:syn3325825
 
 ## Set up
